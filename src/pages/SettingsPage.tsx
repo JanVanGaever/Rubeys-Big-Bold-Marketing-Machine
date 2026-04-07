@@ -1,325 +1,143 @@
-import { useState, useCallback } from 'react';
-import { Eye, EyeOff, Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/utils';
-import type { AppSettings, Domain } from '@/types';
+import { useState } from 'react';
+import { useStore } from '@/store/useStore';
+import { ALL_DOMAINS } from '@/types';
+import type { Tier } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 
-type Tab = 'api' | 'scoring' | 'keywords' | 'hubspot' | 'domains';
-
-const PRESET_COLORS = ['#534AB7', '#0fb57a', '#f4a261', '#e63946', '#457b9d', '#e9c46a', '#2a9d8f', '#f72585', '#7209b7', '#4cc9f0'];
-
-function ApiKeyField({ label, field, settings, show, onToggleShow, onChange }: {
-  label: string; field: keyof AppSettings; settings: AppSettings;
-  show: boolean; onToggleShow: () => void; onChange: (val: string) => void;
-}) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <h3 className="text-xs font-medium text-foreground mb-3">{label}</h3>
-      <div className="flex gap-2">
-        <input type={show ? 'text' : 'password'} value={settings[field] as string} onChange={e => onChange(e.target.value)}
-          placeholder={`Voer ${label} in...`}
-          className="flex-1 font-mono text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-        <button onClick={onToggleShow} className="p-2 rounded-lg border border-border bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors">
-          {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-        </button>
-        <button className="px-3 py-2 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors">Test</button>
-        <button className="px-3 py-2 text-xs bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors">Opslaan</button>
-      </div>
-    </div>
-  );
-}
-
-function DomainCard({ domain, index, total, onUpdate, onDelete, onMoveUp, onMoveDown }: {
-  domain: Domain; index: number; total: number;
-  onUpdate: (id: string, partial: Partial<Domain>) => void;
-  onDelete: (id: string) => void;
-  onMoveUp: (id: string) => void;
-  onMoveDown: (id: string) => void;
-}) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showColors, setShowColors] = useState(false);
-
-  return (
-    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        <div className="flex flex-col gap-0.5 pt-0.5 shrink-0">
-          <button onClick={() => onMoveUp(domain.id)} disabled={index === 0}
-            className={cn('p-0.5 rounded transition-colors', index === 0 ? 'text-muted-foreground/20' : 'text-muted-foreground hover:text-foreground')}>
-            <ChevronUp className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => onMoveDown(domain.id)} disabled={index === total - 1}
-            className={cn('p-0.5 rounded transition-colors', index === total - 1 ? 'text-muted-foreground/20' : 'text-muted-foreground hover:text-foreground')}>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </button>
-        </div>
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <button onClick={() => setShowColors(!showColors)}
-                className="w-5 h-5 rounded-full border border-border shrink-0 hover:ring-2 hover:ring-primary/30 transition-all"
-                style={{ background: domain.color }} />
-              {showColors && (
-                <div className="absolute top-7 left-0 z-10 bg-card border border-border rounded-lg p-2 shadow-xl grid grid-cols-5 gap-1.5">
-                  {PRESET_COLORS.map(c => (
-                    <button key={c} onClick={() => { onUpdate(domain.id, { color: c }); setShowColors(false); }}
-                      className={cn('w-5 h-5 rounded-full border transition-all hover:scale-110', c === domain.color ? 'border-foreground ring-2 ring-primary/40' : 'border-border/50')}
-                      style={{ background: c }} />
-                  ))}
-                  <div className="col-span-5 mt-1">
-                    <input type="color" value={domain.color} onChange={e => onUpdate(domain.id, { color: e.target.value })}
-                      className="w-full h-6 rounded cursor-pointer bg-transparent border-0" />
-                  </div>
-                </div>
-              )}
-            </div>
-            <input value={domain.name} onChange={e => onUpdate(domain.id, { name: e.target.value })}
-              className="flex-1 text-sm font-medium bg-transparent text-foreground border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 py-0.5" />
-          </div>
-          <input value={domain.description ?? ''} onChange={e => onUpdate(domain.id, { description: e.target.value })}
-            placeholder="Beschrijving (optioneel)..."
-            className="w-full text-xs bg-transparent text-muted-foreground border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 py-0.5 placeholder:text-muted-foreground/40" />
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-muted-foreground">Max pts</span>
-            <input type="number" min={1} max={100} value={domain.maxPoints}
-              onChange={e => onUpdate(domain.id, { maxPoints: Math.max(1, +e.target.value) })}
-              className="w-14 text-xs bg-secondary/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary" />
-          </div>
-          <button onClick={() => onUpdate(domain.id, { isActive: !domain.isActive })}
-            className={cn('w-9 h-5 rounded-full transition-all shrink-0 relative', domain.isActive ? 'bg-primary' : 'bg-secondary border border-border')}>
-            <div className={cn('w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all', domain.isActive ? 'left-[18px]' : 'left-0.5')} />
-          </button>
-          {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <button onClick={() => onDelete(domain.id)} className="px-2 py-1 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded hover:bg-red-500/20 transition-colors">Verwijder</button>
-              <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 text-[10px] border border-border text-muted-foreground rounded hover:text-foreground transition-colors">Annuleer</button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="flex items-center gap-3 pl-8 text-[10px] text-muted-foreground/50">
-        <span>Sorteer: {domain.sortOrder}</span>
-        <span>·</span>
-        <span>{domain.items.length} organisaties</span>
-        <span>·</span>
-        <span>{domain.isActive ? 'Actief' : 'Inactief'}</span>
-      </div>
-    </div>
-  );
-}
+const TIERS: Tier[] = ['kern', 'extended', 'peripheral'];
+const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', peripheral: 'Peripheral' };
 
 export default function SettingsPage() {
-  const { settings, setSettings, domains, setDomains, updateDomain, addDomain, deleteDomain } = useApp();
-  const [tab, setTab] = useState<Tab>('api');
-  const [show, setShow] = useState({ apollo: false, lemlist: false, hubspot: false, phantombuster: false });
-  const [newKeyword, setNewKeyword] = useState('');
-  const [newKeywordType, setNewKeywordType] = useState<'positive' | 'negative'>('positive');
-
-  const totalWeight = Object.values(settings.scoreWeights).reduce((a, b) => a + b, 0);
-
-  const addKeywordFn = () => {
-    if (!newKeyword.trim()) return;
-    if (newKeywordType === 'positive') {
-      setSettings(s => ({ ...s, positiveKeywords: [...s.positiveKeywords, newKeyword.trim()] }));
-    } else {
-      setSettings(s => ({ ...s, negativeKeywords: [...s.negativeKeywords, newKeyword.trim()] }));
-    }
-    setNewKeyword('');
-  };
-
-  const moveDomain = useCallback((id: string, direction: 'up' | 'down') => {
-    setDomains(prev => {
-      const idx = prev.findIndex(d => d.id === id);
-      if (idx === -1) return prev;
-      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
-      const next = [...prev];
-      [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
-      return next.map((d, i) => ({ ...d, sortOrder: i + 1 }));
-    });
-  }, [setDomains]);
-
-  const handleAddDomain = useCallback(() => {
-    const newDomain: Domain = {
-      id: `domain-${Date.now()}`,
-      name: 'Nieuw domein',
-      description: '',
-      color: PRESET_COLORS[domains.length % PRESET_COLORS.length],
-      maxPoints: 20,
-      sortOrder: domains.length + 1,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      items: [],
-    };
-    addDomain(newDomain);
-  }, [domains.length, addDomain]);
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'api', label: 'API Keys' },
-    { id: 'scoring', label: 'Scoring' },
-    { id: 'keywords', label: 'Keywords' },
-    { id: 'hubspot', label: 'HubSpot Mapping' },
-    { id: 'domains', label: 'Domeinen' },
-  ];
+  const { settings, updateSettings } = useStore();
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Instellingen</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Configureer scoring, API keys en integraties</p>
+        <h1 className="text-2xl font-bold text-foreground">Instellingen</h1>
+        <p className="text-xs text-muted-foreground">App configuratie en scoring parameters</p>
       </div>
 
-      <div className="flex gap-1 border-b border-border pb-0">
-        {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={cn('px-4 py-2 text-xs transition-colors border-b-2 -mb-px',
-              tab === t.id ? 'text-primary border-primary font-medium' : 'text-muted-foreground border-transparent hover:text-foreground')}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="scoring">
+        <TabsList className="bg-muted">
+          <TabsTrigger value="scoring" className="text-xs">Scoring</TabsTrigger>
+          <TabsTrigger value="domeinen" className="text-xs">Domeinen</TabsTrigger>
+          <TabsTrigger value="koppelingen" className="text-xs">Koppelingen</TabsTrigger>
+          <TabsTrigger value="profiel" className="text-xs">Profiel</TabsTrigger>
+        </TabsList>
 
-      {tab === 'api' && (
-        <div className="space-y-3">
-          <ApiKeyField label="Apollo API Key" field="apolloApiKey" settings={settings} show={show.apollo} onToggleShow={() => setShow(s => ({ ...s, apollo: !s.apollo }))} onChange={v => setSettings(s => ({ ...s, apolloApiKey: v }))} />
-          <ApiKeyField label="Lemlist API Key" field="lemlistApiKey" settings={settings} show={show.lemlist} onToggleShow={() => setShow(s => ({ ...s, lemlist: !s.lemlist }))} onChange={v => setSettings(s => ({ ...s, lemlistApiKey: v }))} />
-          <ApiKeyField label="HubSpot Private App Token" field="hubspotToken" settings={settings} show={show.hubspot} onToggleShow={() => setShow(s => ({ ...s, hubspot: !s.hubspot }))} onChange={v => setSettings(s => ({ ...s, hubspotToken: v }))} />
-          <ApiKeyField label="Phantombuster API Key" field="phantombusterApiKey" settings={settings} show={show.phantombuster} onToggleShow={() => setShow(s => ({ ...s, phantombuster: !s.phantombuster }))} onChange={v => setSettings(s => ({ ...s, phantombusterApiKey: v }))} />
-        </div>
-      )}
-
-      {tab === 'scoring' && (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-medium text-foreground">Component gewichten</h3>
-              <span className={cn('text-[10px] font-mono px-2 py-0.5 rounded', totalWeight === 100 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
-                Totaal: {totalWeight}/100
-              </span>
+        <TabsContent value="scoring" className="space-y-4 mt-4">
+          <Card className="bg-card border-border"><CardContent className="p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Drempelwaarden</h3>
+            <div>
+              <Label className="text-xs">Hot score drempel (bij 2 domeinen)</Label>
+              <Input type="number" value={settings.hotScoreThreshold} onChange={e => updateSettings({ hotScoreThreshold: Number(e.target.value) })} className="h-8 text-xs mt-1 w-32" />
+              <p className="text-[10px] text-muted-foreground mt-1">3 domeinen = altijd hot. 2 domeinen = hot als score ≥ {settings.hotScoreThreshold}</p>
             </div>
-            <div className="space-y-3">
-              {(Object.entries(settings.scoreWeights) as [keyof typeof settings.scoreWeights, number][]).map(([key, value]) => {
-                const labels: Record<string, string> = { engagement: 'Engagement', profileKeywords: 'Profiel Keywords', crossSignal: 'Cross-signaal', enrichment: 'Enrichment', orgDiversity: 'Org. Diversiteit' };
-                return (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-36 shrink-0">{labels[key]}</span>
-                    <input type="range" min={0} max={50} step={5} value={value}
-                      onChange={e => setSettings(s => ({ ...s, scoreWeights: { ...s.scoreWeights, [key]: +e.target.value } }))}
-                      className="flex-1 accent-primary" />
-                    <span className="text-xs font-mono text-foreground w-8 text-right">{value}</span>
+          </CardContent></Card>
+
+          <Card className="bg-card border-border"><CardContent className="p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Tier gewichten</h3>
+            <p className="text-[10px] text-muted-foreground">Elk signaal wordt gewogen op basis van de tier van de organisatie</p>
+            <div className="grid grid-cols-3 gap-4">
+              {TIERS.map(tier => (
+                <div key={tier}>
+                  <Label className="text-xs">{tierLabels[tier]}</Label>
+                  <Input type="number" value={settings.tierWeights[tier]} onChange={e => updateSettings({ tierWeights: { ...settings.tierWeights, [tier]: Number(e.target.value) } })} className="h-8 text-xs mt-1" />
+                </div>
+              ))}
+            </div>
+          </CardContent></Card>
+
+          <Card className="bg-card border-border"><CardContent className="p-4 space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Manueel toevoegen gewicht</h3>
+            <div>
+              <Label className="text-xs">Gewicht voor manueel getagde domeinen</Label>
+              <Input type="number" value={settings.manualAddWeight} onChange={e => updateSettings({ manualAddWeight: Number(e.target.value) })} className="h-8 text-xs mt-1 w-32" />
+            </div>
+          </CardContent></Card>
+
+          <Card className="bg-card border-border"><CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Recency decay</h3>
+            <div className="flex items-center gap-3">
+              <Switch checked={settings.recencyDecay} onCheckedChange={v => updateSettings({ recencyDecay: v })} />
+              <span className="text-xs text-foreground">Oudere signalen wegen minder</span>
+            </div>
+            {settings.recencyDecay && (
+              <div>
+                <Label className="text-xs">Decay factor (0-1)</Label>
+                <Input type="number" step="0.05" min="0" max="1" value={settings.recencyDecayFactor} onChange={e => updateSettings({ recencyDecayFactor: Number(e.target.value) })} className="h-8 text-xs mt-1 w-32" />
+              </div>
+            )}
+          </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="domeinen" className="space-y-4 mt-4">
+          {ALL_DOMAINS.map(d => {
+            const cfg = settings.domainConfig[d];
+            return (
+              <Card key={d} className="bg-card border-border"><CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full" style={{ background: cfg.color }} />
+                  <h3 className="text-sm font-semibold text-foreground">{cfg.name}</h3>
+                  <Badge variant="outline" className="text-[10px] ml-auto">{d}</Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Naam</Label>
+                    <Input value={cfg.name} onChange={e => updateSettings({ domainConfig: { ...settings.domainConfig, [d]: { ...cfg, name: e.target.value } } })} className="h-8 text-xs mt-1" />
                   </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="text-xs font-medium text-foreground mb-3">Drempelwaarden</h3>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Hot ≥</span>
-                <input type="number" value={settings.hotThreshold} onChange={e => setSettings(s => ({ ...s, hotThreshold: +e.target.value }))}
-                  className="w-16 text-xs bg-secondary/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary" />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Warm ≥</span>
-                <input type="number" value={settings.warmThreshold} onChange={e => setSettings(s => ({ ...s, warmThreshold: +e.target.value }))}
-                  className="w-16 text-xs bg-secondary/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary" />
-              </div>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground/50">Scores worden automatisch herberekend wanneer je gewichten of drempels aanpast.</p>
-        </div>
-      )}
-
-      {tab === 'keywords' && (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <h3 className="text-xs font-medium text-foreground mb-3">Keyword toevoegen</h3>
-            <div className="flex gap-2">
-              <input value={newKeyword} onChange={e => setNewKeyword(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeywordFn()}
-                placeholder="Nieuw keyword..."
-                className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-              <select value={newKeywordType} onChange={e => setNewKeywordType(e.target.value as 'positive' | 'negative')}
-                className="text-xs bg-secondary/40 border border-border rounded-lg px-2 py-2 text-muted-foreground focus:outline-none">
-                <option value="positive">Positief (+10)</option>
-                <option value="negative">Negatief (-20)</option>
-              </select>
-              <button onClick={addKeywordFn} className="flex items-center gap-1 px-3 py-2 bg-primary/10 text-primary border border-primary/20 text-xs rounded-lg hover:bg-primary/20 transition-colors">
-                <Plus className="h-3.5 w-3.5" /> Toevoegen
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <h3 className="text-xs font-medium text-emerald-400 mb-3">Positief ({settings.positiveKeywords.length})</h3>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {settings.positiveKeywords.map(kw => (
-                  <div key={kw} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-secondary/40 group">
-                    <span className="text-xs text-foreground">{kw}</span>
-                    <button onClick={() => setSettings(s => ({ ...s, positiveKeywords: s.positiveKeywords.filter(k => k !== kw) }))}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all"><Trash2 className="h-3 w-3" /></button>
+                  <div>
+                    <Label className="text-xs">Kleur</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input type="color" value={cfg.color} onChange={e => updateSettings({ domainConfig: { ...settings.domainConfig, [d]: { ...cfg, color: e.target.value } } })} className="w-8 h-8 rounded border border-border cursor-pointer" />
+                      <Input value={cfg.color} onChange={e => updateSettings({ domainConfig: { ...settings.domainConfig, [d]: { ...cfg, color: e.target.value } } })} className="h-8 text-xs flex-1" />
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <h3 className="text-xs font-medium text-red-400 mb-3">Negatief ({settings.negativeKeywords.length})</h3>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {settings.negativeKeywords.map(kw => (
-                  <div key={kw} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-secondary/40 group">
-                    <span className="text-xs text-foreground">{kw}</span>
-                    <button onClick={() => setSettings(s => ({ ...s, negativeKeywords: s.negativeKeywords.filter(k => k !== kw) }))}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all"><Trash2 className="h-3 w-3" /></button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+                </div>
+                <div>
+                  <Label className="text-xs">Beschrijving</Label>
+                  <Textarea value={cfg.description} onChange={e => updateSettings({ domainConfig: { ...settings.domainConfig, [d]: { ...cfg, description: e.target.value } } })} className="text-xs mt-1 min-h-[60px]" />
+                </div>
+              </CardContent></Card>
+            );
+          })}
+        </TabsContent>
 
-      {tab === 'hubspot' && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-medium text-foreground">Veldmapping naar HubSpot</h3>
+        <TabsContent value="koppelingen" className="space-y-4 mt-4">
           {[
-            { label: 'Lead source', value: "Rubey's Big Bold Marketing Machine" },
-            { label: 'Lifecycle stage', value: 'lead' },
-            { label: 'Contact owner', value: 'jan.van.gaever@rubey.be' },
-          ].map(row => (
-            <div key={row.label} className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground w-40 shrink-0">{row.label}</span>
-              <input defaultValue={row.value} className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-            </div>
+            { name: 'Phantombuster', desc: 'LinkedIn scraping & signal detection', connected: true },
+            { name: 'Apollo', desc: 'Contact enrichment (email, phone)', connected: false },
+            { name: 'Lemlist', desc: 'Email outreach campaigns', connected: true },
+            { name: 'HubSpot', desc: 'CRM sync', connected: false },
+          ].map(c => (
+            <Card key={c.name} className="bg-card border-border"><CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">{c.name}</p>
+                <p className="text-[10px] text-muted-foreground">{c.desc}</p>
+              </div>
+              <Badge variant="outline" className={`text-[10px] ${c.connected ? 'text-green-400 border-green-500/30' : 'text-muted-foreground border-border'}`}>
+                {c.connected ? 'Verbonden' : 'Niet verbonden'}
+              </Badge>
+            </CardContent></Card>
           ))}
-          <div className="pt-2">
-            <button className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 text-primary border border-primary/20 text-xs rounded-lg hover:bg-primary/20 transition-colors">
-              <Save className="h-3.5 w-3.5" /> Opslaan
-            </button>
-          </div>
-        </div>
-      )}
+        </TabsContent>
 
-      {tab === 'domains' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">{domains.length} domeinen · {domains.filter(d => d.isActive).length} actief · Totaal max: {domains.reduce((s, d) => s + (d.isActive ? d.maxPoints : 0), 0)} pts</p>
-          </div>
-          {domains.map((domain, idx) => (
-            <DomainCard key={domain.id} domain={domain} index={idx} total={domains.length}
-              onUpdate={updateDomain} onDelete={deleteDomain}
-              onMoveUp={id => moveDomain(id, 'up')} onMoveDown={id => moveDomain(id, 'down')} />
-          ))}
-          <button onClick={handleAddDomain}
-            className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-border/60 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors">
-            <Plus className="h-3.5 w-3.5" /> Domein toevoegen
-          </button>
-        </div>
-      )}
+        <TabsContent value="profiel" className="mt-4">
+          <Card className="bg-card border-border"><CardContent className="p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Profiel</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label className="text-xs">Naam</Label><Input value="Rubey" disabled className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Email</Label><Input value="rubey@merciervanderlinden.be" disabled className="h-8 text-xs mt-1" /></div>
+            </div>
+          </CardContent></Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
