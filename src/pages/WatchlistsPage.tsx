@@ -18,7 +18,8 @@ const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', p
 const tierColors: Record<Tier, string> = { kern: 'bg-green-500/20 text-green-400 border-green-500/30', extended: 'bg-blue-500/20 text-blue-400 border-blue-500/30', peripheral: 'bg-muted text-muted-foreground border-border' };
 
 export default function WatchlistsPage() {
-  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg } = useStore();
+  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg, settings } = useStore();
+  const domainConfig = settings.domainConfig;
   const [activeDomain, setActiveDomain] = useState<Domain | 'all'>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [addDomain, setAddDomain] = useState<Domain>('kunst');
