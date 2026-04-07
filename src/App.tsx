@@ -1,27 +1,37 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AppLayout from '@/components/AppLayout';
+import BriefingPage from '@/pages/BriefingPage';
+import ImportPage from '@/pages/ImportPage';
+import ContactsPage from '@/pages/ContactsPage';
+import ContactDetailPage from '@/pages/ContactDetailPage';
+import OrganizationsPage from '@/pages/OrganizationsPage';
+import SignalsPage from '@/pages/SignalsPage';
+import EnrichmentPage from '@/pages/EnrichmentPage';
+import LemlistPage from '@/pages/LemlistPage';
+import HubSpotPage from '@/pages/HubSpotPage';
+import SettingsPage from '@/pages/SettingsPage';
+import GuidePage from '@/pages/GuidePage';
+import NotFound from '@/pages/NotFound';
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<BriefingPage />} />
+          <Route path="/import" element={<ImportPage />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/contacts/:id" element={<ContactDetailPage />} />
+          <Route path="/organizations" element={<OrganizationsPage />} />
+          <Route path="/signals" element={<SignalsPage />} />
+          <Route path="/enrichment" element={<EnrichmentPage />} />
+          <Route path="/lemlist" element={<LemlistPage />} />
+          <Route path="/hubspot" element={<HubSpotPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/guide" element={<GuidePage />} />
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}
