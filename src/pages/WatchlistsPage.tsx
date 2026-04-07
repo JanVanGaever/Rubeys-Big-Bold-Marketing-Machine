@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Plus, ToggleLeft, ToggleRight, ExternalLink, Trash2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { ALL_DOMAINS, DOMAIN_META } from '@/types';
 import type { WatchlistOrg, Domain, Tier } from '@/types';
+import { ALL_DOMAINS } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,8 @@ const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', p
 const tierColors: Record<Tier, string> = { kern: 'bg-green-500/20 text-green-400 border-green-500/30', extended: 'bg-blue-500/20 text-blue-400 border-blue-500/30', peripheral: 'bg-muted text-muted-foreground border-border' };
 
 export default function WatchlistsPage() {
-  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg } = useStore();
+  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg, settings } = useStore();
+  const domainConfig = settings.domainConfig;
   const [activeDomain, setActiveDomain] = useState<Domain | 'all'>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [addDomain, setAddDomain] = useState<Domain>('kunst');
@@ -41,8 +42,8 @@ export default function WatchlistsPage() {
         <Button size="sm" variant={activeDomain === 'all' ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setActiveDomain('all')}>Alle</Button>
         {ALL_DOMAINS.map(d => (
           <Button key={d} size="sm" variant={activeDomain === d ? 'default' : 'outline'} className="text-xs h-8 gap-1.5" onClick={() => setActiveDomain(d)}>
-            <div className="w-2 h-2 rounded-full" style={{ background: DOMAIN_META[d].color }} />
-            {DOMAIN_META[d].name.split(' ')[0]}
+            <div className="w-2 h-2 rounded-full" style={{ background: domainConfig[d].color }} />
+            {domainConfig[d].name.split(' ')[0]}
           </Button>
         ))}
       </div>
@@ -56,8 +57,8 @@ export default function WatchlistsPage() {
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: DOMAIN_META[domain].color }} />
-                    <h3 className="text-sm font-semibold text-foreground">{DOMAIN_META[domain].name}</h3>
+                    <div className="w-3 h-3 rounded-full" style={{ background: domainConfig[domain].color }} />
+                    <h3 className="text-sm font-semibold text-foreground">{domainConfig[domain].name}</h3>
                     <Badge variant="outline" className="text-[10px]">{orgs.length}</Badge>
                   </div>
                   <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => { setAddDomain(domain); setShowAdd(true); }}>
@@ -132,7 +133,8 @@ export default function WatchlistsPage() {
 }
 
 function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose: () => void; defaultDomain: Domain }) {
-  const { addWatchlistOrg } = useStore();
+  const { addWatchlistOrg, settings } = useStore();
+  const domainConfig = settings.domainConfig;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [domain, setDomain] = useState<Domain>(defaultDomain);
@@ -162,7 +164,7 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
               <Select value={domain} onValueChange={v => setDomain(v as Domain)}>
                 <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{DOMAIN_META[d].name}</SelectItem>)}
+                  {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{domainConfig[d].name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
