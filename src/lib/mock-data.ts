@@ -115,7 +115,7 @@ export const MOCK_CONTACTS: Contact[] = [
 
 export const MOCK_DOMAINS: Domain[] = [
   {
-    id: 'kunst', name: 'Kunst & Cultuur', color: '#534AB7', maxPts: 35,
+    id: 'kunst', name: 'Kunst & Cultuur', description: 'Musea, galeries, kunstbeurzen en culturele instellingen', color: '#534AB7', maxPoints: 35, sortOrder: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
       { id: 'k1', name: 'KMSKA',           city: 'Antwerpen',  country: 'België',      type: 'museum',     domain: 'kunst', rank: 1, active: true,  likes: 84, comments: 31 },
       { id: 'k2', name: "Christie's",       city: 'Brussel',    country: 'België',      type: 'galerij',    domain: 'kunst', rank: 2, active: true,  likes: 61, comments: 19 },
@@ -128,7 +128,7 @@ export const MOCK_DOMAINS: Domain[] = [
     ],
   },
   {
-    id: 'vermogen', name: 'Vermogen & Banking', color: '#0fb57a', maxPts: 35,
+    id: 'vermogen', name: 'Vermogen & Banking', description: 'Private banks, vermogensbeheerders en family offices', color: '#0fb57a', maxPoints: 35, sortOrder: 2, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
       { id: 'v1', name: 'Bank Delen',       city: 'Antwerpen', country: 'België',  type: 'bank',          domain: 'vermogen', rank: 1, active: true,  likes: 73, comments: 28 },
       { id: 'v2', name: 'Degroof Petercam', city: 'Brussel',   country: 'België',  type: 'bank',          domain: 'vermogen', rank: 2, active: true,  likes: 58, comments: 17 },
@@ -138,7 +138,7 @@ export const MOCK_DOMAINS: Domain[] = [
     ],
   },
   {
-    id: 'luxe', name: 'Luxe & Kapitaal', color: '#f4a261', maxPts: 20,
+    id: 'luxe', name: 'Luxe & Kapitaal', description: 'Luxemerken, vastgoed en prestigieuze evenementen', color: '#f4a261', maxPoints: 20, sortOrder: 3, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
       { id: 'l1', name: 'Patek Philippe',   city: 'Brussel', country: 'België', type: 'luxury_brand', domain: 'luxe', rank: 1, active: true,  likes: 38, comments: 9  },
       { id: 'l2', name: 'Zoute Grand Prix', city: 'Knokke',  country: 'België', type: 'overig',       domain: 'luxe', rank: 2, active: true,  likes: 44, comments: 14 },
