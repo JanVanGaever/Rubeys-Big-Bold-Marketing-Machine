@@ -38,12 +38,12 @@ export default function WatchlistsPage() {
       </div>
 
       {/* Domain tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" variant={activeDomain === 'all' ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setActiveDomain('all')}>Alle</Button>
         {ALL_DOMAINS.map(d => (
-          <Button key={d} size="sm" variant={activeDomain === d ? 'default' : 'outline'} className="text-xs h-8 gap-1.5" onClick={() => setActiveDomain(d)}>
-            <div className="w-2 h-2 rounded-full" style={{ background: domainConfig[d].color }} />
-            {domainConfig[d].name.split(' ')[0]}
+          <Button key={d} size="sm" variant={activeDomain === d ? 'default' : 'outline'} className="text-xs h-8 gap-1.5 whitespace-nowrap" onClick={() => setActiveDomain(d)}>
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: domainConfig[d].color }} />
+            {domainConfig[d].name}
           </Button>
         ))}
       </div>
