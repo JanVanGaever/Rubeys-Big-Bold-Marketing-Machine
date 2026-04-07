@@ -1,13 +1,17 @@
-import { Zap, Users, Eye, Activity, Send, Settings } from 'lucide-react';
+import { Zap, Upload, Users, Eye, Activity, Database, Send, GitBranch, Settings, BookOpen } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 
 const nav = [
-  { title: 'Briefing',      to: '/',             icon: Zap,      end: true },
+  { title: 'Briefing',      to: '/',             icon: Zap,        end: true },
+  { title: 'Import',        to: '/import',       icon: Upload },
   { title: 'Contacten',     to: '/contacten',    icon: Users },
   { title: 'Watchlists',    to: '/watchlists',   icon: Eye },
   { title: 'Signalen',      to: '/signalen',     icon: Activity },
+  { title: 'Enrichment',    to: '/enrichment',   icon: Database },
   { title: 'Campagnes',     to: '/campagnes',    icon: Send },
+  { title: 'HubSpot',       to: '/hubspot',      icon: GitBranch },
   { title: 'Instellingen',  to: '/instellingen', icon: Settings },
+  { title: 'Handleiding',   to: '/handleiding',  icon: BookOpen },
 ];
 
 export default function AppSidebar() {
@@ -22,7 +26,7 @@ export default function AppSidebar() {
           <p className="text-[10px] text-muted-foreground leading-tight">Marketing Machine</p>
         </div>
       </div>
-      <nav className="flex-1 py-2">
+      <nav className="flex-1 py-2 overflow-y-auto">
         {nav.map(item => (
           <NavLink key={item.to} to={item.to} end={item.end}
             className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
