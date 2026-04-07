@@ -1,95 +1,87 @@
-export type SignalType = 'kunst' | 'vermogen' | 'luxe';
-export type LeadStatus = 'hot' | 'warm' | 'cold';
-export type SourceType = 'chrome_extension' | 'apollo' | 'phantombuster' | 'manual' | 'import';
-export type OutreachStatus = 'not_contacted' | 'in_sequence' | 'replied' | 'meeting_booked' | 'converted';
+export type Domain = 'kunst' | 'beleggen' | 'luxe';
+export type Tier = 'kern' | 'extended' | 'peripheral';
+
+export const TIER_WEIGHT: Record<Tier, number> = { kern: 3, extended: 2, peripheral: 1 };
+
+export const DOMAIN_META: Record<Domain, { name: string; color: string; description: string }> = {
+  kunst: { name: 'Kunst & Cultuur', color: '#7F77DD', description: 'Musea, galeries, kunstbeurzen en culturele instellingen' },
+  beleggen: { name: 'Beleggen & Financiën', color: '#378ADD', description: 'Banken, vermogensbeheerders, family offices' },
+  luxe: { name: 'Luxe & Lifestyle', color: '#D85A30', description: 'Luxemerken, vastgoed, prestigieuze evenementen' },
+};
+
+export const ALL_DOMAINS: Domain[] = ['kunst', 'beleggen', 'luxe'];
+
+export interface WatchlistOrg {
+  id: string;
+  name: string;
+  linkedinUrl: string;
+  domain: Domain;
+  tier: Tier;
+  isActive: boolean;
+  postsScrapedCount: number;
+  lastScrapedAt: string | null;
+}
 
 export interface Signal {
-  type: SignalType;
-  source: string;
-  weight: number;
-  date: string;
+  id: string;
+  contactLinkedinUrl: string;
+  contactName: string;
+  contactTitle: string | null;
+  orgId: string;
+  orgName: string;
+  domain: Domain;
+  tier: Tier;
+  engagementType: 'like' | 'comment';
+  commentText: string | null;
+  detectedAt: string;
+  postUrl: string | null;
+}
+
+export interface DomainPresence {
+  signalCount: number;
+  lastSignalAt: string | null;
+  weightedScore: number;
 }
 
 export interface Contact {
   id: string;
+  linkedinUrl: string;
   firstName: string;
   lastName: string;
-  title: string;
-  company: string;
-  linkedinUrl?: string;
-  emailPersonal?: string;
-  emailWork?: string;
-  phone?: string;
-  location?: string;
-  score: number;
-  status: LeadStatus;
-  signals: Signal[];
-  sourceType: SourceType;
-  outreachStatus: OutreachStatus;
-  lemlistStatus?: string;
-  hubspotSynced?: boolean;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  title: string | null;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  source: 'auto' | 'manual';
+  addedAt: string;
+  domains: Record<Domain, DomainPresence>;
+  activeDomainCount: number;
+  totalScore: number;
+  status: 'cold' | 'warm' | 'hot';
+  isEnriched: boolean;
+  enrichedAt: string | null;
+  lemlistCampaignId: string | null;
+  lemlistPushedAt: string | null;
+  lastContactedAt: string | null;
+  notes: string;
 }
 
-export interface OrgSignal {
-  id: string;
-  name: string;
-  city: string;
-  country: string;
-  domainId: string;
-  rank: number;
-  active: boolean;
-  likes: number;
-  comments: number;
-  linkedinUrl?: string;
-}
-
-export interface Domain {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  maxPoints: number;
-  sortOrder: number;
-  isActive: boolean;
-  createdAt: string;
-  items: OrgSignal[];
-}
-
-export interface ApolloSearch {
-  id: string;
-  name: string;
-  isActive: boolean;
-  lastRunAt?: string;
-  resultsCount?: number;
+export interface AppSettings {
+  hotScoreThreshold: number;
+  tierWeights: Record<Tier, number>;
+  manualAddWeight: number;
+  recencyDecay: boolean;
+  recencyDecayFactor: number;
+  domainConfig: Record<Domain, { name: string; color: string; description: string }>;
 }
 
 export interface LemlistCampaign {
   id: string;
   name: string;
-  status: 'active' | 'paused' | 'draft';
+  status: 'active' | 'paused' | 'completed';
   leadsCount: number;
-  repliesCount: number;
-}
-
-export interface ScoreWeights {
-  engagement: number;
-  profileKeywords: number;
-  crossSignal: number;
-  enrichment: number;
-  orgDiversity: number;
-}
-
-export interface AppSettings {
-  hotThreshold: number;
-  warmThreshold: number;
-  scoreWeights: ScoreWeights;
-  positiveKeywords: string[];
-  negativeKeywords: string[];
-  apolloApiKey: string;
-  lemlistApiKey: string;
-  hubspotToken: string;
-  phantombusterApiKey: string;
+  emailsSent: number;
+  opens: number;
+  replies: number;
 }
