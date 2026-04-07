@@ -103,4 +103,13 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   recomputeScores: () => set(s => ({
     contacts: recompute(s.contacts, s.signals, s.settings),
   })),
+}), {
+  name: 'rubey-store',
+  partialize: (state) => ({
+    watchlistOrgs: state.watchlistOrgs,
+    signals: state.signals,
+    contacts: state.contacts,
+    campaigns: state.campaigns,
+    settings: state.settings,
+  }),
 }));
