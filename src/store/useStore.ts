@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, LemlistCampaign } from '@/types';
 import { TIER_WEIGHT } from '@/types';
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from '@/lib/seed-data';
@@ -61,7 +62,7 @@ function recompute(contacts: Contact[], signals: Signal[], settings: AppSettings
 const seedSignals = buildSignals();
 const seedContacts = buildContacts(seedSignals, DEFAULT_SETTINGS.hotScoreThreshold);
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>()(persist((set, get) => ({
   watchlistOrgs: SEED_ORGS,
   signals: seedSignals,
   contacts: seedContacts,
@@ -102,4 +103,13 @@ export const useStore = create<AppState>((set, get) => ({
   recomputeScores: () => set(s => ({
     contacts: recompute(s.contacts, s.signals, s.settings),
   })),
+}), {
+  name: 'rubey-store',
+  partialize: (state) => ({
+    watchlistOrgs: state.watchlistOrgs,
+    signals: state.signals,
+    contacts: state.contacts,
+    campaigns: state.campaigns,
+    settings: state.settings,
+  }),
 }));
