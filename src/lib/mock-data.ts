@@ -1,4 +1,4 @@
-import type { Contact, Domain, OrgSignal, LemlistCampaign, AppSettings } from '@/types';
+import type { Contact, Domain, LemlistCampaign, AppSettings } from '@/types';
 
 export const MOCK_CONTACTS: Contact[] = [
   {
@@ -117,33 +117,33 @@ export const MOCK_DOMAINS: Domain[] = [
   {
     id: 'kunst', name: 'Kunst & Cultuur', description: 'Musea, galeries, kunstbeurzen en culturele instellingen', color: '#534AB7', maxPoints: 35, sortOrder: 1, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
-      { id: 'k1', name: 'KMSKA',           city: 'Antwerpen',  country: 'België',      type: 'museum',     domain: 'kunst', rank: 1, active: true,  likes: 84, comments: 31 },
-      { id: 'k2', name: "Christie's",       city: 'Brussel',    country: 'België',      type: 'galerij',    domain: 'kunst', rank: 2, active: true,  likes: 61, comments: 19 },
-      { id: 'k3', name: 'Bozar',            city: 'Brussel',    country: 'België',      type: 'museum',     domain: 'kunst', rank: 3, active: true,  likes: 47, comments: 12 },
-      { id: 'k4', name: 'BRAFA',            city: 'Brussel',    country: 'België',      type: 'kunstbeurs', domain: 'kunst', rank: 4, active: true,  likes: 29, comments: 8  },
-      { id: 'k5', name: 'Art Brussels',     city: 'Brussel',    country: 'België',      type: 'kunstbeurs', domain: 'kunst', rank: 5, active: true,  likes: 21, comments: 5  },
-      { id: 'k6', name: 'Tefaf Maastricht', city: 'Maastricht', country: 'Nederland',   type: 'kunstbeurs', domain: 'kunst', rank: 6, active: true,  likes: 52, comments: 16 },
-      { id: 'k7', name: "Sotheby's België", city: 'Brussel',    country: 'België',      type: 'galerij',    domain: 'kunst', rank: 7, active: false, likes: 33, comments: 11 },
-      { id: 'k8', name: 'M Leuven',         city: 'Leuven',     country: 'België',      type: 'museum',     domain: 'kunst', rank: 8, active: false, likes: 18, comments: 4  },
+      { id: 'k1', name: 'KMSKA',           city: 'Antwerpen',  country: 'België',    domainId: 'kunst', rank: 1, active: true,  likes: 84, comments: 31 },
+      { id: 'k2', name: "Christie's",       city: 'Brussel',    country: 'België',    domainId: 'kunst', rank: 2, active: true,  likes: 61, comments: 19 },
+      { id: 'k3', name: 'Bozar',            city: 'Brussel',    country: 'België',    domainId: 'kunst', rank: 3, active: true,  likes: 47, comments: 12 },
+      { id: 'k4', name: 'BRAFA',            city: 'Brussel',    country: 'België',    domainId: 'kunst', rank: 4, active: true,  likes: 29, comments: 8  },
+      { id: 'k5', name: 'Art Brussels',     city: 'Brussel',    country: 'België',    domainId: 'kunst', rank: 5, active: true,  likes: 21, comments: 5  },
+      { id: 'k6', name: 'Tefaf Maastricht', city: 'Maastricht', country: 'Nederland', domainId: 'kunst', rank: 6, active: true,  likes: 52, comments: 16 },
+      { id: 'k7', name: "Sotheby's België", city: 'Brussel',    country: 'België',    domainId: 'kunst', rank: 7, active: false, likes: 33, comments: 11 },
+      { id: 'k8', name: 'M Leuven',         city: 'Leuven',     country: 'België',    domainId: 'kunst', rank: 8, active: false, likes: 18, comments: 4  },
     ],
   },
   {
     id: 'vermogen', name: 'Vermogen & Banking', description: 'Private banks, vermogensbeheerders en family offices', color: '#0fb57a', maxPoints: 35, sortOrder: 2, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
-      { id: 'v1', name: 'Bank Delen',       city: 'Antwerpen', country: 'België',  type: 'bank',          domain: 'vermogen', rank: 1, active: true,  likes: 73, comments: 28 },
-      { id: 'v2', name: 'Degroof Petercam', city: 'Brussel',   country: 'België',  type: 'bank',          domain: 'vermogen', rank: 2, active: true,  likes: 58, comments: 17 },
-      { id: 'v3', name: 'Puilaetco',        city: 'Brussel',   country: 'België',  type: 'bank',          domain: 'vermogen', rank: 3, active: true,  likes: 22, comments: 6  },
-      { id: 'v4', name: 'Quintet (KBL)',    city: 'Brussel',   country: 'België',  type: 'bank',          domain: 'vermogen', rank: 4, active: true,  likes: 16, comments: 4  },
-      { id: 'v5', name: 'Econopolis',       city: 'Gent',      country: 'België',  type: 'overig',        domain: 'vermogen', rank: 5, active: false, likes: 11, comments: 3  },
+      { id: 'v1', name: 'Bank Delen',       city: 'Antwerpen', country: 'België', domainId: 'vermogen', rank: 1, active: true,  likes: 73, comments: 28 },
+      { id: 'v2', name: 'Degroof Petercam', city: 'Brussel',   country: 'België', domainId: 'vermogen', rank: 2, active: true,  likes: 58, comments: 17 },
+      { id: 'v3', name: 'Puilaetco',        city: 'Brussel',   country: 'België', domainId: 'vermogen', rank: 3, active: true,  likes: 22, comments: 6  },
+      { id: 'v4', name: 'Quintet (KBL)',    city: 'Brussel',   country: 'België', domainId: 'vermogen', rank: 4, active: true,  likes: 16, comments: 4  },
+      { id: 'v5', name: 'Econopolis',       city: 'Gent',      country: 'België', domainId: 'vermogen', rank: 5, active: false, likes: 11, comments: 3  },
     ],
   },
   {
     id: 'luxe', name: 'Luxe & Kapitaal', description: 'Luxemerken, vastgoed en prestigieuze evenementen', color: '#f4a261', maxPoints: 20, sortOrder: 3, isActive: true, createdAt: '2026-01-01T00:00:00Z',
     items: [
-      { id: 'l1', name: 'Patek Philippe',   city: 'Brussel', country: 'België', type: 'luxury_brand', domain: 'luxe', rank: 1, active: true,  likes: 38, comments: 9  },
-      { id: 'l2', name: 'Zoute Grand Prix', city: 'Knokke',  country: 'België', type: 'overig',       domain: 'luxe', rank: 2, active: true,  likes: 44, comments: 14 },
-      { id: 'l3', name: "Sotheby's Realty", city: 'Brussel', country: 'België', type: 'overig',       domain: 'luxe', rank: 3, active: true,  likes: 19, comments: 4  },
-      { id: 'l4', name: 'Rolex',            city: 'Brussel', country: 'België', type: 'luxury_brand', domain: 'luxe', rank: 4, active: false, likes: 31, comments: 7  },
+      { id: 'l1', name: 'Patek Philippe',   city: 'Brussel', country: 'België', domainId: 'luxe', rank: 1, active: true,  likes: 38, comments: 9  },
+      { id: 'l2', name: 'Zoute Grand Prix', city: 'Knokke',  country: 'België', domainId: 'luxe', rank: 2, active: true,  likes: 44, comments: 14 },
+      { id: 'l3', name: "Sotheby's Realty", city: 'Brussel', country: 'België', domainId: 'luxe', rank: 3, active: true,  likes: 19, comments: 4  },
+      { id: 'l4', name: 'Rolex',            city: 'Brussel', country: 'België', domainId: 'luxe', rank: 4, active: false, likes: 31, comments: 7  },
     ],
   },
 ];
