@@ -163,11 +163,11 @@ export default function SignalsPage() {
                     <span className="text-xs font-medium text-foreground flex-1">{domain.name}</span>
                     <span className="text-[10px] text-muted-foreground">{domain.items.length} org.</span>
                   </div>
-                  <p className="text-[9px] text-muted-foreground/60 mt-1 pl-4">Pos. 1 = {domain.maxPts} pts · 2 = {getPts(1, domain.maxPts)} · 3+ = {getPts(2, domain.maxPts)}</p>
+                  <p className="text-[9px] text-muted-foreground/60 mt-1 pl-4">Pos. 1 = {domain.maxPoints} pts · 2 = {getPts(1, domain.maxPoints)} · 3+ = {getPts(2, domain.maxPoints)}</p>
                 </div>
                 <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0">
                   {domain.items.map((item, idx) => (
-                    <OrgCard key={item.id} item={item} index={idx} maxPts={domain.maxPts} compact
+                    <OrgCard key={item.id} item={item} index={idx} maxPts={domain.maxPoints} compact
                       onDragStart={() => handleDragStart(domain.id, item.id)}
                       onDragOver={e => handleDragOver(e, domain.id, item.id)}
                       onDrop={e => handleDrop(e, domain.id, item.id)}
@@ -225,7 +225,7 @@ export default function SignalsPage() {
               </div>
               <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
                 {currentFocus.items.map((item, idx) => (
-                  <OrgCard key={item.id} item={item} index={idx} maxPts={currentFocus.maxPts} compact={false}
+                  <OrgCard key={item.id} item={item} index={idx} maxPts={currentFocus.maxPoints} compact={false}
                     onDragStart={() => handleDragStart(currentFocus.id, item.id)}
                     onDragOver={e => handleDragOver(e, currentFocus.id, item.id)}
                     onDrop={e => handleDrop(e, currentFocus.id, item.id)}
