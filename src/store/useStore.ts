@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, LemlistCampaign } from '@/types';
 import { TIER_WEIGHT } from '@/types';
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from '@/lib/seed-data';
