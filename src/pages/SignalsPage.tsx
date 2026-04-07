@@ -1,147 +1,113 @@
-import { Lock, Brain, Layers, ArrowRightLeft, Sparkles } from 'lucide-react';
-import { getPts } from '@/lib/mock-data';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
+import { nl } from 'date-fns/locale';
+import { Heart, MessageCircle, Activity, Users, Zap } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import { ALL_DOMAINS, DOMAIN_META } from '@/types';
+import type { Tier } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', peripheral: 'Peripheral' };
 
 export default function SignalsPage() {
-  const { domains, contacts } = useApp();
-  const activeDomains = domains.filter(d => d.isActive);
+  const { signals, contacts, settings } = useStore();
+  const [domainFilter, setDomainFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [tierFilter, setTierFilter] = useState<string>('all');
 
-  const contactDomainCounts = contacts.map(c => new Set(c.signals.map(s => s.type)).size);
-  const single = contactDomainCounts.filter(c => c === 1).length;
-  const dual = contactDomainCounts.filter(c => c === 2).length;
-  const triple = contactDomainCounts.filter(c => c >= 3).length;
+  const today = new Date('2026-04-07');
+  const weekAgo = new Date(today.getTime() - 7 * 86400000);
+
+  const filtered = useMemo(() => {
+    let list = [...signals].sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
+    if (domainFilter !== 'all') list = list.filter(s => s.domain === domainFilter);
+    if (typeFilter !== 'all') list = list.filter(s => s.engagementType === typeFilter);
+    if (tierFilter !== 'all') list = list.filter(s => s.tier === tierFilter);
+    return list;
+  }, [signals, domainFilter, typeFilter, tierFilter]);
+
+  const signalsToday = signals.filter(s => new Date(s.detectedAt).toDateString() === today.toDateString()).length;
+  const signalsWeek = signals.filter(s => new Date(s.detectedAt) >= weekAgo).length;
+  const newContactsWeek = contacts.filter(c => new Date(c.addedAt) >= weekAgo).length;
+  const crossSignals = contacts.filter(c => c.activeDomainCount >= 2).length;
 
   return (
-    <div className="flex flex-col gap-6 h-full overflow-y-auto">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-foreground">Signalen</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Read-only overzicht van je signaalarchitectuur · {activeDomains.length} domeinen · {activeDomains.reduce((s, d) => s + d.items.length, 0)} organisaties
-        </p>
+        <h1 className="text-2xl font-bold text-foreground">Signalen</h1>
+        <p className="text-xs text-muted-foreground">Alle engagement signalen — live feed</p>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-          <h2 className="text-sm font-medium text-foreground">Domein overzicht</h2>
-        </div>
-        <div className={cn('grid gap-3',
-          activeDomains.length <= 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-          activeDomains.length > 3 && 'xl:grid-cols-4'
-        )}>
-          {activeDomains.map(domain => {
-            const activeItems = domain.items.filter(o => o.active);
-            const totalPts = activeItems.reduce((s, _, i) => s + getPts(i, domain.maxPoints), 0);
-            return (
-              <div key={domain.id} className="bg-card border border-border rounded-xl flex flex-col">
-                <div className="px-4 pt-3 pb-2 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: domain.color }} />
-                    <span className="text-xs font-medium text-foreground flex-1">{domain.name}</span>
-                  </div>
-                  <div className="flex gap-3 mt-1.5 pl-[18px]">
-                    <span className="text-[10px] text-muted-foreground">{domain.items.length} org.</span>
-                    <span className="text-[10px] text-muted-foreground">{activeItems.length} actief</span>
-                    <span className="text-[10px] text-muted-foreground">Max {domain.maxPoints} pts</span>
-                  </div>
-                </div>
-                <div className="flex-1 px-3 py-2 space-y-0.5 max-h-72 overflow-y-auto">
-                  {domain.items.sort((a, b) => a.rank - b.rank).map((org, idx) => {
-                    const pts = getPts(idx, domain.maxPoints);
-                    return (
-                      <div key={org.id} className={cn('flex items-center gap-2 py-1.5 px-2 rounded-md', org.active ? '' : 'opacity-30')}>
-                        <span className="text-[10px] font-mono text-muted-foreground/40 w-3 shrink-0">{org.rank}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-foreground truncate">{org.name}</p>
-                          <p className="text-[9px] text-muted-foreground/40">{org.city}</p>
-                        </div>
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{pts} pts</span>
-                        <div className="flex items-center gap-1 shrink-0 text-muted-foreground/30">
-                          <span className="text-[9px] font-mono">{org.likes + org.comments}</span>
-                          <span className="text-[8px]">sig.</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="px-4 py-2 border-t border-border/50 text-[9px] text-muted-foreground/40">
-                  Pos. 1 = {domain.maxPoints} pts · 2 = {getPts(1, domain.maxPoints)} · 3 = {getPts(2, domain.maxPoints)} · Totaal bereik: {totalPts} pts
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Vandaag', value: signalsToday, icon: Activity },
+          { label: 'Deze week', value: signalsWeek, icon: Zap },
+          { label: 'Nieuwe contacten', value: newContactsWeek, icon: Users },
+          { label: 'Cross-signalen', value: crossSignals, icon: Heart },
+        ].map(s => (
+          <Card key={s.label} className="bg-card border-border"><CardContent className="p-3 flex items-center gap-2">
+            <s.icon className="h-4 w-4 text-muted-foreground" />
+            <div><p className="text-lg font-bold text-foreground">{s.value}</p><p className="text-[10px] text-muted-foreground">{s.label}</p></div>
+          </CardContent></Card>
+        ))}
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
-          <h2 className="text-sm font-medium text-foreground">Cross-signalen</h2>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-4">
-            De kracht van het model zit in cross-signalen: contacten die in meerdere domeinen actief zijn, scoren significant hoger.
-          </p>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-secondary/40 rounded-lg p-3 text-center">
-              <p className="text-2xl font-semibold text-foreground">{single}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">1 domein</p>
-              <div className="flex justify-center gap-1 mt-2">
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/10" />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/10" />
-              </div>
-            </div>
-            <div className="bg-secondary/40 rounded-lg p-3 text-center border border-primary/10">
-              <p className="text-2xl font-semibold text-foreground">{dual}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">2 domeinen</p>
-              <div className="flex justify-center gap-1 mt-2">
-                <div className="w-2 h-2 rounded-full bg-primary/60" />
-                <div className="w-2 h-2 rounded-full bg-primary/60" />
-                <div className="w-2 h-2 rounded-full bg-muted-foreground/10" />
-              </div>
-            </div>
-            <div className="bg-secondary/40 rounded-lg p-3 text-center border border-primary/20">
-              <p className="text-2xl font-semibold text-primary">{triple}</p>
-              <p className="text-[10px] text-muted-foreground mt-1">3+ domeinen</p>
-              <div className="flex justify-center gap-1 mt-2">
-                <div className="w-2 h-2 rounded-full bg-primary" />
-                <div className="w-2 h-2 rounded-full bg-primary" />
-                <div className="w-2 h-2 rounded-full bg-primary" />
-              </div>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground/40 mt-3 text-center">
-            {contacts.length} contacten geanalyseerd · {dual + triple} met cross-domein activiteit ({contacts.length > 0 ? Math.round(((dual + triple) / contacts.length) * 100) : 0}%)
-          </p>
-        </div>
+      <div className="flex items-center gap-3">
+        <Select value={domainFilter} onValueChange={setDomainFilter}>
+          <SelectTrigger className="w-40 h-8 text-xs"><SelectValue placeholder="Domein" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle domeinen</SelectItem>
+            {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{DOMAIN_META[d].name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle types</SelectItem>
+            <SelectItem value="like">Likes</SelectItem>
+            <SelectItem value="comment">Comments</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={tierFilter} onValueChange={setTierFilter}>
+          <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Tier" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle tiers</SelectItem>
+            <SelectItem value="kern">Kern</SelectItem>
+            <SelectItem value="extended">Extended</SelectItem>
+            <SelectItem value="peripheral">Peripheral</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Brain className="h-3.5 w-3.5 text-muted-foreground" />
-          <h2 className="text-sm font-medium text-foreground">AI Kalibratie</h2>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Op basis van klantprofielen kan AI suggesties doen voor rangorde-aanpassingen, nieuwe organisaties, of nieuwe domeinen.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {[
-            { title: 'Rangorde suggestie', desc: 'Beschikbaar wanneer er voldoende signaaldata is', icon: Sparkles },
-            { title: 'Nieuwe organisatie', desc: 'Beschikbaar wanneer er voldoende signaaldata is', icon: Layers },
-            { title: 'Nieuw domein', desc: 'Beschikbaar wanneer er voldoende klantprofielen zijn', icon: Brain },
-          ].map(card => (
-            <div key={card.title} className="bg-card border border-border/40 rounded-xl p-4 opacity-40 select-none">
-              <div className="flex items-center gap-2 mb-2">
-                <card.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">{card.title}</span>
-                <Lock className="h-3 w-3 text-muted-foreground/50 ml-auto" />
+      <div className="space-y-1">
+        {filtered.map(s => {
+          const contact = contacts.find(c => c.linkedinUrl === s.contactLinkedinUrl);
+          const isCross = contact && contact.activeDomainCount >= 2;
+          const meta = settings.domainConfig[s.domain];
+          return (
+            <motion.div key={s.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+              className={`flex items-start gap-3 p-3 rounded border transition-colors ${isCross ? 'border-l-2 bg-muted/20' : 'border-transparent'}`}
+              style={isCross ? { borderLeftColor: meta.color } : undefined}>
+              <div className="text-[10px] text-muted-foreground w-20 shrink-0 pt-0.5">
+                {formatDistanceToNow(new Date(s.detectedAt), { addSuffix: false, locale: nl })}
               </div>
-              <p className="text-[10px] text-muted-foreground/60 leading-relaxed">{card.desc}</p>
-            </div>
-          ))}
-        </div>
+              <div className="flex-1 min-w-0 text-xs">
+                <p className="text-foreground">
+                  <span className="font-medium">{s.contactName}</span>{' '}
+                  {s.engagementType === 'like' ? <><Heart className="inline h-3 w-3 text-red-400" /> liked</> : <><MessageCircle className="inline h-3 w-3 text-blue-400" /> commented on</>}{' '}
+                  <span className="font-medium">{s.orgName}</span>
+                </p>
+                {s.commentText && <p className="text-muted-foreground truncate mt-0.5">"{s.commentText}"</p>}
+                {isCross && <p className="text-[10px] mt-1 font-medium" style={{ color: meta.color }}>✨ Cross-signaal! Nu actief in {contact.activeDomainCount} domeinen</p>}
+              </div>
+              <Badge variant="outline" className="text-[10px] shrink-0" style={{ borderColor: meta.color, color: meta.color }}>{meta.name.split(' ')[0]}</Badge>
+              <Badge variant="outline" className="text-[10px] text-muted-foreground shrink-0">{tierLabels[s.tier]}</Badge>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );

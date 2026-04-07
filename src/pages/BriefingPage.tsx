@@ -1,127 +1,151 @@
-import { useState } from 'react';
-import { Zap, ThumbsUp, MessageSquare, Users, TrendingUp, Send, ChevronRight, Brain } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { getScoreBadge } from '@/lib/mock-data';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/utils';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
+import { nl } from 'date-fns/locale';
+import { Zap, TrendingUp, Clock, Send, CalendarClock } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import { ALL_DOMAINS } from '@/types';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
-const today = new Date().toLocaleDateString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' });
-
-function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) {
-  return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center mb-3', color)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <p className="text-2xl font-semibold text-foreground">{value}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-    </div>
-  );
-}
+const fadeIn = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 export default function BriefingPage() {
-  const navigate = useNavigate();
-  const { contacts, domains } = useApp();
-  const [pushed, setPushed] = useState<string[]>([]);
+  const { contacts, signals, settings } = useStore();
+  const today = new Date('2026-04-07');
 
-  const hotLeads = contacts.filter(c => c.status === 'hot').slice(0, 5);
-  const newToday = contacts.filter(c => c.createdAt === new Date().toISOString().slice(0, 10)).length;
-  const replies = contacts.filter(c => c.outreachStatus === 'replied').length;
-  const crossSignals = contacts.filter(c => new Set(c.signals.map(s => s.type)).size >= 2).length;
+  const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && c.source === 'auto' && !c.lemlistCampaignId), [contacts]);
+  const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts]);
+  const warmRisers = useMemo(() => contacts.filter(c => c.status === 'warm').sort((a, b) => b.totalScore - a.totalScore), [contacts]);
+  const actionable = [...newHot, ...followUp];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Zap className="h-4 w-4 text-primary" />
-            <h1 className="text-xl font-semibold text-foreground">Dagelijkse Briefing</h1>
-          </div>
-          <p className="text-xs text-muted-foreground capitalize">{today}</p>
-        </div>
-        <button onClick={() => navigate('/contacts')} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          Alle contacten <ChevronRight className="h-3 w-3" />
-        </button>
-      </div>
+    <div className="space-y-8">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+        <p className="text-xs text-muted-foreground">Dinsdag 7 april</p>
+        <h1 className="text-2xl font-bold text-foreground">{actionable.length > 0 ? `${actionable.length} lead${actionable.length > 1 ? 's' : ''} klaar voor outreach` : 'Geen directe acties vandaag'}</h1>
+      </motion.div>
 
-      <div className="grid grid-cols-4 gap-3">
-        <StatCard icon={TrendingUp} label="Hot leads vandaag" value={hotLeads.length} color="bg-red-500/10 text-red-400" />
-        <StatCard icon={Users} label="Nieuwe leads" value={newToday} color="bg-blue-500/10 text-blue-400" />
-        <StatCard icon={MessageSquare} label="Replies" value={replies} color="bg-emerald-500/10 text-emerald-400" />
-        <StatCard icon={Brain} label="Cross-signalen" value={crossSignals} color="bg-violet-500/10 text-violet-400" />
-      </div>
-
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-medium text-foreground">Top hot leads</h2>
-          <span className="text-[10px] text-muted-foreground">Score · Signalen · Actie</span>
-        </div>
-        <div className="divide-y divide-border">
-          {hotLeads.map(contact => {
-            const badge = getScoreBadge(contact.score);
-            const isPushed = pushed.includes(contact.id);
-            return (
-              <div key={contact.id} className="flex items-center gap-4 px-5 py-3 hover:bg-secondary/30 transition-colors">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="text-[11px] font-medium text-primary">{contact.firstName[0]}{contact.lastName[0]}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => navigate(`/contacts/${contact.id}`)} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                      {contact.firstName} {contact.lastName}
-                    </button>
-                    <span className={cn('text-[10px] px-1.5 py-0.5 rounded', badge.className)}>{badge.label}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">{contact.title} · {contact.company}</p>
-                </div>
-                <div className="text-center shrink-0">
-                  <p className="text-lg font-semibold text-foreground">{contact.score}</p>
-                  <p className="text-[10px] text-muted-foreground">score</p>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {domains.filter(d => d.isActive).map(d => {
-                    const has = contact.signals.some(s => s.type === d.id);
-                    return <div key={d.id} className={cn('w-2.5 h-2.5 rounded-full', has ? 'opacity-100' : 'opacity-20')} style={{ background: d.color }} />;
-                  })}
-                </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => setPushed(p => [...p, contact.id])} disabled={isPushed}
-                    className={cn('flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-md border transition-colors',
-                      isPushed ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
-                    )}>
-                    <Send className="h-3 w-3" />
-                    {isPushed ? 'Verstuurd' : 'Lemlist'}
-                  </button>
-                </div>
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Nieuw hot', value: newHot.length, icon: Zap, color: 'text-red-400' },
+          { label: 'Follow-up nodig', value: followUp.length, icon: Clock, color: 'text-amber-400' },
+          { label: 'Warm stijgers', value: warmRisers.length, icon: TrendingUp, color: 'text-blue-400' },
+        ].map(s => (
+          <Card key={s.label} className="bg-card border-border">
+            <CardContent className="p-4 flex items-center gap-3">
+              <s.icon className={`h-5 w-5 ${s.color}`} />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{s.value}</p>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
               </div>
-            );
-          })}
-        </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Brain className="h-3.5 w-3.5 text-emerald-400" />
-          <h2 className="text-sm font-medium text-foreground">Recente cross-signalen</h2>
-        </div>
-        <div className="space-y-2">
-          {contacts.filter(c => new Set(c.signals.map(s => s.type)).size >= 2).slice(0, 5).map(contact => (
-            <div key={contact.id} className="flex items-center gap-3 py-2 px-3 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
-              <div className="flex gap-1">
-                {domains.filter(d => d.isActive).map(d => {
-                  const has = contact.signals.some(s => s.type === d.id);
-                  return <div key={d.id} className={cn('w-2 h-2 rounded-full', has ? 'opacity-100' : 'opacity-20')} style={{ background: d.color }} />;
-                })}
-              </div>
-              <p className="text-xs text-foreground flex-1">
-                <span className="font-medium">{contact.firstName} {contact.lastName}</span>
-                <span className="text-muted-foreground"> — {contact.signals.length} signalen uit {new Set(contact.signals.map(s => s.type)).size} domeinen</span>
-              </p>
-              <span className="text-xs font-mono text-emerald-400">{contact.score} pts</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {actionable.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Vandaag actie nemen</h2>
+          <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-3">
+            {actionable.map(c => {
+              const isFollowUp = !!c.lemlistCampaignId;
+              const daysSincePush = c.lemlistPushedAt ? Math.floor((today.getTime() - new Date(c.lemlistPushedAt).getTime()) / 86400000) : 0;
+              return (
+                <motion.div key={c.id} variants={fadeIn}>
+                  <Card className="bg-card border-border">
+                    <CardContent className="p-4 flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                        <span className="text-sm font-semibold text-foreground">{c.firstName[0]}{c.lastName[0]}</span>
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                            <p className="text-xs text-muted-foreground">{c.title} — {c.company}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-bold text-foreground">{c.totalScore}</p>
+                            <p className="text-[10px] text-muted-foreground">{c.activeDomainCount} domeinen</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {ALL_DOMAINS.filter(d => c.domains[d].signalCount > 0).map(d => {
+                            const meta = settings.domainConfig[d];
+                            const lastOrg = signals.filter(s => s.contactLinkedinUrl === c.linkedinUrl && s.domain === d).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt))[0];
+                            return (
+                              <Badge key={d} variant="outline" className="text-[10px] px-2 py-0.5" style={{ borderColor: meta.color, color: meta.color }}>
+                                {meta.name.split(' ')[0]}: {lastOrg?.orgName} {lastOrg?.engagementType === 'like' ? 'liked' : 'comment'}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-muted-foreground italic">
+                          {isFollowUp ? `Follow-up: ${daysSincePush} dagen geen reactie na Lemlist` : `Score drempel bereikt: actief in ${c.activeDomainCount} domeinen`}
+                        </p>
+                      </div>
+                      <Button size="sm" variant="default" className="shrink-0 text-xs gap-1">
+                        {isFollowUp ? <><CalendarClock className="h-3.5 w-3.5" />Hercontact</> : <><Send className="h-3.5 w-3.5" />Push naar Lemlist</>}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </section>
+      )}
+
+      {warmRisers.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Stijgers om in de gaten te houden</h2>
+          <Card className="bg-card border-border">
+            <CardContent className="p-0">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left p-3 font-medium">Naam</th>
+                    <th className="text-center p-3 font-medium">Score</th>
+                    <th className="text-center p-3 font-medium">Domeinen</th>
+                    <th className="text-right p-3 font-medium">Laatste signaal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {warmRisers.slice(0, 8).map(c => (
+                    <tr key={c.id} className="border-b border-border/50 last:border-0">
+                      <td className="p-3 flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-semibold">{c.firstName[0]}{c.lastName[0]}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{c.firstName} {c.lastName}</p>
+                          <p className="text-muted-foreground">{c.company}</p>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center font-semibold text-foreground">{c.totalScore}</td>
+                      <td className="p-3">
+                        <div className="flex justify-center gap-1">
+                          {ALL_DOMAINS.map(d => (
+                            <div key={d} className="w-2.5 h-2.5 rounded-full" style={{ background: settings.domainConfig[d].color, opacity: c.domains[d].signalCount > 0 ? 1 : 0.15 }} />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-3 text-right text-muted-foreground">
+                        {(() => {
+                          const last = ALL_DOMAINS.map(d => c.domains[d].lastSignalAt).filter(Boolean).sort().reverse()[0];
+                          return last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : '—';
+                        })()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        </section>
+      )}
     </div>
   );
 }

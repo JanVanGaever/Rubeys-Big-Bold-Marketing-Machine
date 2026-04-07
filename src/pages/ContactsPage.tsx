@@ -1,136 +1,261 @@
-import { useMemo } from 'react';
-import { Search, ChevronRight, Send } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getScoreBadge, getOutreachLabel } from '@/lib/mock-data';
-import { useApp } from '@/context/AppContext';
-import { cn } from '@/lib/utils';
-import type { LeadStatus } from '@/types';
+import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { formatDistanceToNow } from 'date-fns';
+import { nl } from 'date-fns/locale';
+import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Heart, MessageCircle } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import { ALL_DOMAINS, DOMAIN_META } from '@/types';
+import type { Contact } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type SortKey = 'score' | 'name' | 'date';
-
-const SOURCE_LABEL: Record<string, string> = {
-  chrome_extension: 'Chrome', apollo: 'Apollo', phantombuster: 'Phantombuster', manual: 'Manueel', import: 'Import',
-};
+const statusColors: Record<Contact['status'], string> = { hot: 'bg-red-500', warm: 'bg-amber-500', cold: 'bg-muted-foreground/40' };
 
 export default function ContactsPage() {
-  const navigate = useNavigate();
-  const { contacts, domains } = useApp();
+  const { contacts, signals, settings, addContact, updateContact } = useStore();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<LeadStatus | 'all'>('all');
-  const [sort, setSort] = useState<SortKey>('score');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sort, setSort] = useState<string>('score');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
 
   const filtered = useMemo(() => {
-    let list = contacts.filter(c => {
+    let list = contacts;
+    if (search) {
       const q = search.toLowerCase();
-      const matchSearch = !q || `${c.firstName} ${c.lastName} ${c.company} ${c.title}`.toLowerCase().includes(q);
-      const matchFilter = filter === 'all' || c.status === filter;
-      return matchSearch && matchFilter;
+      list = list.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.company ?? '').toLowerCase().includes(q) || (c.title ?? '').toLowerCase().includes(q));
+    }
+    if (statusFilter === 'manual') list = list.filter(c => c.source === 'manual');
+    else if (statusFilter !== 'all') list = list.filter(c => c.status === statusFilter);
+    const sorted = [...list];
+    if (sort === 'score') sorted.sort((a, b) => b.totalScore - a.totalScore);
+    else if (sort === 'recent') sorted.sort((a, b) => {
+      const la = ALL_DOMAINS.map(d => a.domains[d].lastSignalAt).filter(Boolean).sort().reverse()[0] ?? '';
+      const lb = ALL_DOMAINS.map(d => b.domains[d].lastSignalAt).filter(Boolean).sort().reverse()[0] ?? '';
+      return lb.localeCompare(la);
     });
-    list.sort((a, b) => {
-      if (sort === 'score') return b.score - a.score;
-      if (sort === 'name') return `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`);
-      return b.createdAt.localeCompare(a.createdAt);
-    });
-    return list;
-  }, [contacts, search, filter, sort]);
+    else sorted.sort((a, b) => a.lastName.localeCompare(b.lastName));
+    return sorted;
+  }, [contacts, search, statusFilter, sort]);
 
-  const counts = {
-    all: contacts.length,
-    hot: contacts.filter(c => c.status === 'hot').length,
-    warm: contacts.filter(c => c.status === 'warm').length,
-    cold: contacts.filter(c => c.status === 'cold').length,
-  };
-
-  const activeDomains = domains.filter(d => d.isActive);
+  const selected = contacts.find(c => c.id === selectedId) ?? null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Contacten</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{contacts.length} contacten in de database</p>
+          <h1 className="text-2xl font-bold text-foreground">Contacten</h1>
+          <p className="text-xs text-muted-foreground">{contacts.length} leads in database</p>
         </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs rounded-lg transition-colors">+ Toevoegen</button>
+        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1 text-xs"><Plus className="h-3.5 w-3.5" />Prospect toevoegen</Button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Zoeken op naam, bedrijf..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-secondary/40 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Zoek naam, bedrijf, titel..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-xs" />
         </div>
         <div className="flex gap-1">
-          {(['all', 'hot', 'warm', 'cold'] as const).map(f => {
-            const colors = { all: '', hot: 'data-[active]:text-red-400 data-[active]:border-red-500/30 data-[active]:bg-red-500/10', warm: 'data-[active]:text-orange-400 data-[active]:border-orange-500/30 data-[active]:bg-orange-500/10', cold: 'data-[active]:text-slate-400 data-[active]:border-slate-500/30 data-[active]:bg-slate-500/10' };
-            return (
-              <button key={f} data-active={filter === f ? '' : undefined} onClick={() => setFilter(f)}
-                className={cn('px-3 py-1.5 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground transition-all', filter === f && 'text-foreground bg-secondary', colors[f])}>
-                {f === 'all' ? 'Alle' : f.charAt(0).toUpperCase() + f.slice(1)} ({counts[f]})
-              </button>
-            );
-          })}
+          {[{ key: 'all', label: 'Alle' }, { key: 'hot', label: 'Hot' }, { key: 'warm', label: 'Warm' }, { key: 'cold', label: 'Cold' }, { key: 'manual', label: 'Manueel' }].map(f => (
+            <Button key={f.key} size="sm" variant={statusFilter === f.key ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setStatusFilter(f.key)}>{f.label}</Button>
+          ))}
         </div>
-        <select value={sort} onChange={e => setSort(e.target.value as SortKey)}
-          className="ml-auto text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary">
-          <option value="score">Sorteren: Score</option>
-          <option value="name">Sorteren: Naam</option>
-          <option value="date">Sorteren: Datum</option>
-        </select>
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-44 h-9 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="score">Score (hoog-laag)</SelectItem>
+            <SelectItem value="recent">Recentste signaal</SelectItem>
+            <SelectItem value="name">Naam A-Z</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1fr_auto_auto_auto_auto] text-[10px] text-muted-foreground px-4 py-2 border-b border-border gap-4">
-          <span>Contact</span><span>Score</span><span>Signalen</span><span>Status</span><span>Actie</span>
-        </div>
-        <div className="divide-y divide-border">
-          {filtered.map(contact => {
-            const badge = getScoreBadge(contact.score);
-            return (
-              <div key={contact.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center px-4 py-3 hover:bg-secondary/20 transition-colors gap-4 cursor-pointer"
-                onClick={() => navigate(`/contacts/${contact.id}`)}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-medium text-primary">{contact.firstName[0]}{contact.lastName[0]}</span>
+      <Card className="bg-card border-border">
+        <CardContent className="p-0">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border text-muted-foreground">
+                <th className="text-left p-3 font-medium w-8"></th>
+                <th className="text-left p-3 font-medium">Naam</th>
+                <th className="text-left p-3 font-medium">Titel & Bedrijf</th>
+                <th className="text-center p-3 font-medium">Domeinen</th>
+                <th className="text-center p-3 font-medium">Score</th>
+                <th className="text-right p-3 font-medium">Laatste signaal</th>
+                <th className="text-center p-3 font-medium w-16"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(c => (
+                <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setSelectedId(c.id)}>
+                  <td className="p-3"><div className={`w-2 h-2 rounded-full ${statusColors[c.status]}`} /></td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0"><span className="text-[10px] font-semibold">{c.firstName[0]}{c.lastName[0]}</span></div>
+                      <span className="font-medium text-foreground">{c.firstName} {c.lastName}</span>
+                    </div>
+                  </td>
+                  <td className="p-3 text-muted-foreground">{c.title}{c.company ? ` — ${c.company}` : ''}</td>
+                  <td className="p-3">
+                    <div className="flex justify-center gap-1">
+                      {ALL_DOMAINS.map(d => (<div key={d} className="w-2.5 h-2.5 rounded-full" style={{ background: settings.domainConfig[d].color, opacity: c.domains[d].signalCount > 0 ? 1 : 0.15 }} />))}
+                    </div>
+                  </td>
+                  <td className="p-3 text-center font-semibold text-foreground">{c.totalScore}</td>
+                  <td className="p-3 text-right text-muted-foreground">
+                    {(() => { const last = ALL_DOMAINS.map(d => c.domains[d].lastSignalAt).filter(Boolean).sort().reverse()[0]; return last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : '—'; })()}
+                  </td>
+                  <td className="p-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {c.isEnriched && <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />}
+                      {c.lemlistCampaignId && <Send className="h-3.5 w-3.5 text-blue-400" />}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      {/* Detail sheet */}
+      <Sheet open={!!selected} onOpenChange={() => setSelectedId(null)}>
+        <SheetContent className="w-[480px] sm:max-w-[480px] bg-card border-border overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader className="space-y-3 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center"><span className="text-lg font-bold">{selected.firstName[0]}{selected.lastName[0]}</span></div>
+                  <div>
+                    <SheetTitle className="text-foreground">{selected.firstName} {selected.lastName}</SheetTitle>
+                    <p className="text-xs text-muted-foreground">{selected.title} — {selected.company}</p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{contact.firstName} {contact.lastName}</p>
-                    <p className="text-xs text-muted-foreground truncate">{contact.title} · {contact.company}</p>
-                  </div>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground shrink-0">{SOURCE_LABEL[contact.sourceType]}</span>
                 </div>
-                <div className="text-center shrink-0">
-                  <p className="text-base font-semibold text-foreground">{contact.score}</p>
-                  <span className={cn('text-[9px] px-1.5 py-0.5 rounded', badge.className)}>{badge.label}</span>
+              </SheetHeader>
+              <div className="space-y-6 text-xs">
+                <div className="space-y-2">
+                  {selected.linkedinUrl && <a href={`https://${selected.linkedinUrl}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-blue-400 hover:underline"><ExternalLink className="h-3 w-3" />{selected.linkedinUrl}</a>}
+                  {selected.email && <p className="flex items-center gap-2 text-muted-foreground"><Mail className="h-3 w-3" />{selected.email}</p>}
+                  {selected.phone && <p className="flex items-center gap-2 text-muted-foreground"><Phone className="h-3 w-3" />{selected.phone}</p>}
                 </div>
-                <div className="flex gap-1.5 shrink-0">
-                  {activeDomains.map(d => {
-                    const count = contact.signals.filter(s => s.type === d.id).length;
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground text-sm">Domein scores</h3>
+                  {ALL_DOMAINS.map(d => {
+                    const dp = selected.domains[d];
+                    const meta = settings.domainConfig[d];
                     return (
-                      <div key={d.id} className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-mono font-medium"
-                        style={{ background: `${d.color}20`, color: d.color, opacity: count > 0 ? 1 : 0.3 }}>
-                        {count}
+                      <div key={d} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} /><span className="text-foreground">{meta.name}</span></div>
+                          <span className="font-semibold text-foreground">{dp.weightedScore} pts</span>
+                        </div>
+                        <p className="text-muted-foreground pl-4">{dp.signalCount} signalen</p>
                       </div>
                     );
                   })}
+                  <div className="flex items-center justify-between border-t border-border pt-2">
+                    <span className="font-semibold text-foreground">Totaal</span>
+                    <span className="text-lg font-bold text-foreground">{selected.totalScore}</span>
+                  </div>
                 </div>
-                <div className="shrink-0">
-                  <span className={cn('text-[10px] px-2 py-0.5 rounded-full border',
-                    contact.outreachStatus === 'replied' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                    contact.outreachStatus === 'in_sequence' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                    contact.outreachStatus === 'meeting_booked' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                    'bg-secondary text-muted-foreground border-border'
-                  )}>{getOutreachLabel(contact.outreachStatus)}</span>
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground text-sm">Signaal tijdlijn</h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {signals.filter(s => s.contactLinkedinUrl === selected.linkedinUrl).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt)).map(s => (
+                      <div key={s.id} className="flex items-start gap-2 p-2 rounded bg-muted/30">
+                        <div className="w-2 h-2 rounded-full mt-1 shrink-0" style={{ background: settings.domainConfig[s.domain].color }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground">{s.engagementType === 'like' ? '❤️' : '💬'} {s.orgName}</p>
+                          {s.commentText && <p className="text-muted-foreground truncate">{s.commentText}</p>}
+                          <p className="text-muted-foreground/60">{formatDistanceToNow(new Date(s.detectedAt), { addSuffix: true, locale: nl })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-                  <button className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"><Send className="h-3 w-3" /></button>
-                  <button onClick={() => navigate(`/contacts/${contact.id}`)} className="p-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"><ChevronRight className="h-3 w-3" /></button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs flex-1">Verrijk via Apollo</Button>
+                  <Button size="sm" className="text-xs flex-1">Push naar Lemlist</Button>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground text-sm">Notities</h3>
+                  <Textarea value={selected.notes} onChange={e => updateContact(selected.id, { notes: e.target.value })} className="text-xs min-h-[80px]" placeholder="Voeg notities toe..." />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Add dialog */}
+      <AddContactDialog open={showAdd} onClose={() => setShowAdd(false)} />
     </div>
+  );
+}
+
+function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { addContact } = useStore();
+  const [form, setForm] = useState({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false } as Record<string, boolean>, notes: '' });
+
+  const handleSave = () => {
+    if (!form.linkedinUrl || !form.firstName || !form.lastName) return;
+    const url = form.linkedinUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+    const newContact: Contact = {
+      id: `contact-${Date.now()}`, linkedinUrl: url, firstName: form.firstName, lastName: form.lastName,
+      title: form.title || null, company: form.company || null, email: null, phone: null, location: null,
+      source: 'manual', addedAt: new Date().toISOString(),
+      domains: {
+        kunst: { signalCount: form.domains.kunst ? 1 : 0, lastSignalAt: form.domains.kunst ? new Date().toISOString() : null, weightedScore: form.domains.kunst ? 3 : 0 },
+        beleggen: { signalCount: form.domains.beleggen ? 1 : 0, lastSignalAt: form.domains.beleggen ? new Date().toISOString() : null, weightedScore: form.domains.beleggen ? 3 : 0 },
+        luxe: { signalCount: form.domains.luxe ? 1 : 0, lastSignalAt: form.domains.luxe ? new Date().toISOString() : null, weightedScore: form.domains.luxe ? 3 : 0 },
+      },
+      activeDomainCount: 0, totalScore: 0, status: 'cold',
+      isEnriched: false, enrichedAt: null, lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: form.notes,
+    };
+    addContact(newContact);
+    setForm({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false }, notes: '' });
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="bg-card border-border sm:max-w-md">
+        <DialogHeader><DialogTitle className="text-foreground">Prospect toevoegen</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-xs">
+          <div><Label className="text-xs">LinkedIn URL *</Label><Input value={form.linkedinUrl} onChange={e => setForm(p => ({ ...p, linkedinUrl: e.target.value }))} placeholder="https://linkedin.com/in/..." className="text-xs h-8 mt-1" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">Voornaam *</Label><Input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} className="text-xs h-8 mt-1" /></div>
+            <div><Label className="text-xs">Achternaam *</Label><Input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} className="text-xs h-8 mt-1" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">Titel</Label><Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="text-xs h-8 mt-1" /></div>
+            <div><Label className="text-xs">Bedrijf</Label><Input value={form.company} onChange={e => setForm(p => ({ ...p, company: e.target.value }))} className="text-xs h-8 mt-1" /></div>
+          </div>
+          <div>
+            <Label className="text-xs">Domeinen</Label>
+            <div className="flex gap-4 mt-2">
+              {ALL_DOMAINS.map(d => (
+                <label key={d} className="flex items-center gap-2 text-xs text-foreground">
+                  <Checkbox checked={form.domains[d]} onCheckedChange={v => setForm(p => ({ ...p, domains: { ...p.domains, [d]: !!v } }))} />
+                  {DOMAIN_META[d].name.split(' ')[0]}
+                </label>
+              ))}
+            </div>
+          </div>
+          <div><Label className="text-xs">Notities</Label><Textarea value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="text-xs mt-1" /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose} className="text-xs">Annuleren</Button>
+          <Button size="sm" onClick={handleSave} className="text-xs">Opslaan</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
