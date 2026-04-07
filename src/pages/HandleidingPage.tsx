@@ -41,9 +41,9 @@ export default function HandleidingPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-8 max-w-5xl">
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-8 max-w-5xl relative">
       {/* TOC */}
-      <aside className="w-48 shrink-0 sticky top-0 pt-2 hidden lg:block">
+      <aside className="w-48 shrink-0 hidden lg:block self-start sticky top-6">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-3 font-semibold">Inhoud</p>
         <nav className="space-y-0.5">
           {SECTIONS.map(s => (
