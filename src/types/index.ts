@@ -50,8 +50,12 @@ export interface OrgSignal {
 export interface Domain {
   id: string;
   name: string;
+  description?: string;
   color: string;
-  maxPts: number;
+  maxPoints: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
   items: OrgSignal[];
 }
 
