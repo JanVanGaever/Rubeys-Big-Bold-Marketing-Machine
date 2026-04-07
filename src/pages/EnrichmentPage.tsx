@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Sparkles, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import { MOCK_CONTACTS } from '@/lib/mock-data';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
 export default function EnrichmentPage() {
+  const { contacts } = useApp();
   const [enriching, setEnriching] = useState<string[]>([]);
   const [enriched, setEnriched] = useState<string[]>([]);
 
-  const needsEnrichment = MOCK_CONTACTS.filter(c => !c.emailWork || !c.phone);
+  const needsEnrichment = contacts.filter(c => !c.emailWork || !c.phone);
 
   const enrich = (id: string) => {
     setEnriching(p => [...p, id]);
@@ -32,7 +33,7 @@ export default function EnrichmentPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        {[{ label: 'Te verrijken', value: needsEnrichment.length, color: 'text-orange-400' }, { label: 'Verrijkt vandaag', value: enriched.length, color: 'text-emerald-400' }, { label: 'Totaal compleet', value: MOCK_CONTACTS.filter(c => c.emailWork && c.phone).length, color: 'text-foreground' }].map(s => (
+        {[{ label: 'Te verrijken', value: needsEnrichment.length, color: 'text-orange-400' }, { label: 'Verrijkt vandaag', value: enriched.length, color: 'text-emerald-400' }, { label: 'Totaal compleet', value: contacts.filter(c => c.emailWork && c.phone).length, color: 'text-foreground' }].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4">
             <p className={cn('text-2xl font-semibold', s.color)}>{s.value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
