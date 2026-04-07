@@ -1,4 +1,4 @@
-import type { Contact, Domain, OrgSignal, LemlistCampaign, AppSettings } from '@/types';
+import type { Contact, Domain, LemlistCampaign, AppSettings } from '@/types';
 
 export const MOCK_CONTACTS: Contact[] = [
   {
