@@ -62,7 +62,7 @@ function recompute(contacts: Contact[], signals: Signal[], settings: AppSettings
 const seedSignals = buildSignals();
 const seedContacts = buildContacts(seedSignals, DEFAULT_SETTINGS.hotScoreThreshold);
 
-export const useStore = create<AppState>((set, get) => ({
+export const useStore = create<AppState>()(persist((set, get) => ({
   watchlistOrgs: SEED_ORGS,
   signals: seedSignals,
   contacts: seedContacts,
