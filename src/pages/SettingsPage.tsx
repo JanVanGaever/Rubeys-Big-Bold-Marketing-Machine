@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { Eye, EyeOff, Plus, Trash2, Save, RefreshCw, ChevronUp, ChevronDown, Palette } from 'lucide-react';
-import { DEFAULT_SETTINGS, MOCK_DOMAINS } from '@/lib/mock-data';
+import { Eye, EyeOff, Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 import type { AppSettings, Domain } from '@/types';
 
@@ -16,13 +16,9 @@ function ApiKeyField({ label, field, settings, show, onToggleShow, onChange }: {
     <div className="bg-card border border-border rounded-xl p-4">
       <h3 className="text-xs font-medium text-foreground mb-3">{label}</h3>
       <div className="flex gap-2">
-        <input
-          type={show ? 'text' : 'password'}
-          value={settings[field] as string}
-          onChange={e => onChange(e.target.value)}
+        <input type={show ? 'text' : 'password'} value={settings[field] as string} onChange={e => onChange(e.target.value)}
           placeholder={`Voer ${label} in...`}
-          className="flex-1 font-mono text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+          className="flex-1 font-mono text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
         <button onClick={onToggleShow} className="p-2 rounded-lg border border-border bg-secondary/40 text-muted-foreground hover:text-foreground transition-colors">
           {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
         </button>
@@ -46,7 +42,6 @@ function DomainCard({ domain, index, total, onUpdate, onDelete, onMoveUp, onMove
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-3">
-        {/* Move arrows */}
         <div className="flex flex-col gap-0.5 pt-0.5 shrink-0">
           <button onClick={() => onMoveUp(domain.id)} disabled={index === 0}
             className={cn('p-0.5 rounded transition-colors', index === 0 ? 'text-muted-foreground/20' : 'text-muted-foreground hover:text-foreground')}>
@@ -57,8 +52,6 @@ function DomainCard({ domain, index, total, onUpdate, onDelete, onMoveUp, onMove
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
         </div>
-
-        {/* Color dot + name */}
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -73,61 +66,42 @@ function DomainCard({ domain, index, total, onUpdate, onDelete, onMoveUp, onMove
                       style={{ background: c }} />
                   ))}
                   <div className="col-span-5 mt-1">
-                    <input type="color" value={domain.color}
-                      onChange={e => onUpdate(domain.id, { color: e.target.value })}
+                    <input type="color" value={domain.color} onChange={e => onUpdate(domain.id, { color: e.target.value })}
                       className="w-full h-6 rounded cursor-pointer bg-transparent border-0" />
                   </div>
                 </div>
               )}
             </div>
-            <input value={domain.name}
-              onChange={e => onUpdate(domain.id, { name: e.target.value })}
+            <input value={domain.name} onChange={e => onUpdate(domain.id, { name: e.target.value })}
               className="flex-1 text-sm font-medium bg-transparent text-foreground border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 py-0.5" />
           </div>
-          <input value={domain.description ?? ''}
-            onChange={e => onUpdate(domain.id, { description: e.target.value })}
+          <input value={domain.description ?? ''} onChange={e => onUpdate(domain.id, { description: e.target.value })}
             placeholder="Beschrijving (optioneel)..."
             className="w-full text-xs bg-transparent text-muted-foreground border-b border-transparent hover:border-border focus:border-primary focus:outline-none transition-colors px-1 py-0.5 placeholder:text-muted-foreground/40" />
         </div>
-
-        {/* Right side controls */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* Max points */}
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-muted-foreground">Max pts</span>
             <input type="number" min={1} max={100} value={domain.maxPoints}
               onChange={e => onUpdate(domain.id, { maxPoints: Math.max(1, +e.target.value) })}
               className="w-14 text-xs bg-secondary/40 border border-border rounded-lg px-2 py-1.5 text-foreground text-center focus:outline-none focus:ring-1 focus:ring-primary" />
           </div>
-
-          {/* Active toggle */}
           <button onClick={() => onUpdate(domain.id, { isActive: !domain.isActive })}
             className={cn('w-9 h-5 rounded-full transition-all shrink-0 relative', domain.isActive ? 'bg-primary' : 'bg-secondary border border-border')}>
             <div className={cn('w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all', domain.isActive ? 'left-[18px]' : 'left-0.5')} />
           </button>
-
-          {/* Delete */}
           {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)}
-              className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+            <button onClick={() => setConfirmDelete(true)} className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           ) : (
             <div className="flex items-center gap-1">
-              <button onClick={() => onDelete(domain.id)}
-                className="px-2 py-1 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded hover:bg-red-500/20 transition-colors">
-                Verwijder
-              </button>
-              <button onClick={() => setConfirmDelete(false)}
-                className="px-2 py-1 text-[10px] border border-border text-muted-foreground rounded hover:text-foreground transition-colors">
-                Annuleer
-              </button>
+              <button onClick={() => onDelete(domain.id)} className="px-2 py-1 text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 rounded hover:bg-red-500/20 transition-colors">Verwijder</button>
+              <button onClick={() => setConfirmDelete(false)} className="px-2 py-1 text-[10px] border border-border text-muted-foreground rounded hover:text-foreground transition-colors">Annuleer</button>
             </div>
           )}
         </div>
       </div>
-
-      {/* Meta */}
       <div className="flex items-center gap-3 pl-8 text-[10px] text-muted-foreground/50">
         <span>Sorteer: {domain.sortOrder}</span>
         <span>·</span>
@@ -140,16 +114,15 @@ function DomainCard({ domain, index, total, onUpdate, onDelete, onMoveUp, onMove
 }
 
 export default function SettingsPage() {
+  const { settings, setSettings, domains, setDomains, updateDomain, addDomain, deleteDomain } = useApp();
   const [tab, setTab] = useState<Tab>('api');
-  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [show, setShow] = useState({ apollo: false, lemlist: false, hubspot: false, phantombuster: false });
   const [newKeyword, setNewKeyword] = useState('');
   const [newKeywordType, setNewKeywordType] = useState<'positive' | 'negative'>('positive');
-  const [domains, setDomains] = useState<Domain[]>(MOCK_DOMAINS);
 
   const totalWeight = Object.values(settings.scoreWeights).reduce((a, b) => a + b, 0);
 
-  const addKeyword = () => {
+  const addKeywordFn = () => {
     if (!newKeyword.trim()) return;
     if (newKeywordType === 'positive') {
       setSettings(s => ({ ...s, positiveKeywords: [...s.positiveKeywords, newKeyword.trim()] }));
@@ -158,17 +131,6 @@ export default function SettingsPage() {
     }
     setNewKeyword('');
   };
-
-  const updateDomain = useCallback((id: string, partial: Partial<Domain>) => {
-    setDomains(prev => prev.map(d => d.id === id ? { ...d, ...partial } : d));
-  }, []);
-
-  const deleteDomain = useCallback((id: string) => {
-    setDomains(prev => {
-      const filtered = prev.filter(d => d.id !== id);
-      return filtered.map((d, i) => ({ ...d, sortOrder: i + 1 }));
-    });
-  }, []);
 
   const moveDomain = useCallback((id: string, direction: 'up' | 'down') => {
     setDomains(prev => {
@@ -180,9 +142,9 @@ export default function SettingsPage() {
       [next[idx], next[targetIdx]] = [next[targetIdx], next[idx]];
       return next.map((d, i) => ({ ...d, sortOrder: i + 1 }));
     });
-  }, []);
+  }, [setDomains]);
 
-  const addDomain = useCallback(() => {
+  const handleAddDomain = useCallback(() => {
     const newDomain: Domain = {
       id: `domain-${Date.now()}`,
       name: 'Nieuw domein',
@@ -194,8 +156,8 @@ export default function SettingsPage() {
       createdAt: new Date().toISOString(),
       items: [],
     };
-    setDomains(prev => [...prev, newDomain]);
-  }, [domains.length]);
+    addDomain(newDomain);
+  }, [domains.length, addDomain]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'api', label: 'API Keys' },
@@ -212,22 +174,16 @@ export default function SettingsPage() {
         <p className="text-xs text-muted-foreground mt-0.5">Configureer scoring, API keys en integraties</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 border-b border-border pb-0">
         {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
+          <button key={t.id} onClick={() => setTab(t.id)}
             className={cn('px-4 py-2 text-xs transition-colors border-b-2 -mb-px',
-              tab === t.id ? 'text-primary border-primary font-medium' : 'text-muted-foreground border-transparent hover:text-foreground'
-            )}
-          >
+              tab === t.id ? 'text-primary border-primary font-medium' : 'text-muted-foreground border-transparent hover:text-foreground')}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* API Keys */}
       {tab === 'api' && (
         <div className="space-y-3">
           <ApiKeyField label="Apollo API Key" field="apolloApiKey" settings={settings} show={show.apollo} onToggleShow={() => setShow(s => ({ ...s, apollo: !s.apollo }))} onChange={v => setSettings(s => ({ ...s, apolloApiKey: v }))} />
@@ -237,7 +193,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Scoring */}
       {tab === 'scoring' && (
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-xl p-4">
@@ -253,18 +208,15 @@ export default function SettingsPage() {
                 return (
                   <div key={key} className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground w-36 shrink-0">{labels[key]}</span>
-                    <input
-                      type="range" min={0} max={50} step={5} value={value}
+                    <input type="range" min={0} max={50} step={5} value={value}
                       onChange={e => setSettings(s => ({ ...s, scoreWeights: { ...s.scoreWeights, [key]: +e.target.value } }))}
-                      className="flex-1 accent-primary"
-                    />
+                      className="flex-1 accent-primary" />
                     <span className="text-xs font-mono text-foreground w-8 text-right">{value}</span>
                   </div>
                 );
               })}
             </div>
           </div>
-
           <div className="bg-card border border-border rounded-xl p-4">
             <h3 className="text-xs font-medium text-foreground mb-3">Drempelwaarden</h3>
             <div className="flex gap-6">
@@ -280,42 +232,28 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <button className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-xs rounded-lg transition-colors">
-              <Save className="h-3.5 w-3.5" /> Opslaan & herbereken scores
-            </button>
-          </div>
+          <p className="text-[10px] text-muted-foreground/50">Scores worden automatisch herberekend wanneer je gewichten of drempels aanpast.</p>
         </div>
       )}
 
-      {/* Keywords */}
       {tab === 'keywords' && (
         <div className="space-y-4">
           <div className="bg-card border border-border rounded-xl p-4">
             <h3 className="text-xs font-medium text-foreground mb-3">Keyword toevoegen</h3>
             <div className="flex gap-2">
-              <input
-                value={newKeyword}
-                onChange={e => setNewKeyword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addKeyword()}
+              <input value={newKeyword} onChange={e => setNewKeyword(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeywordFn()}
                 placeholder="Nieuw keyword..."
-                className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <select
-                value={newKeywordType}
-                onChange={e => setNewKeywordType(e.target.value as 'positive' | 'negative')}
-                className="text-xs bg-secondary/40 border border-border rounded-lg px-2 py-2 text-muted-foreground focus:outline-none"
-              >
+                className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+              <select value={newKeywordType} onChange={e => setNewKeywordType(e.target.value as 'positive' | 'negative')}
+                className="text-xs bg-secondary/40 border border-border rounded-lg px-2 py-2 text-muted-foreground focus:outline-none">
                 <option value="positive">Positief (+10)</option>
                 <option value="negative">Negatief (-20)</option>
               </select>
-              <button onClick={addKeyword} className="flex items-center gap-1 px-3 py-2 bg-primary/10 text-primary border border-primary/20 text-xs rounded-lg hover:bg-primary/20 transition-colors">
+              <button onClick={addKeywordFn} className="flex items-center gap-1 px-3 py-2 bg-primary/10 text-primary border border-primary/20 text-xs rounded-lg hover:bg-primary/20 transition-colors">
                 <Plus className="h-3.5 w-3.5" /> Toevoegen
               </button>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-xl p-4">
               <h3 className="text-xs font-medium text-emerald-400 mb-3">Positief ({settings.positiveKeywords.length})</h3>
@@ -324,9 +262,7 @@ export default function SettingsPage() {
                   <div key={kw} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-secondary/40 group">
                     <span className="text-xs text-foreground">{kw}</span>
                     <button onClick={() => setSettings(s => ({ ...s, positiveKeywords: s.positiveKeywords.filter(k => k !== kw) }))}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 ))}
               </div>
@@ -338,9 +274,7 @@ export default function SettingsPage() {
                   <div key={kw} className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-secondary/40 group">
                     <span className="text-xs text-foreground">{kw}</span>
                     <button onClick={() => setSettings(s => ({ ...s, negativeKeywords: s.negativeKeywords.filter(k => k !== kw) }))}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 ))}
               </div>
@@ -349,7 +283,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* HubSpot mapping */}
       {tab === 'hubspot' && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <h3 className="text-xs font-medium text-foreground">Veldmapping naar HubSpot</h3>
@@ -371,20 +304,17 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Domeinen */}
       {tab === 'domains' && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">{domains.length} domeinen · {domains.filter(d => d.isActive).length} actief · Totaal max: {domains.reduce((s, d) => s + (d.isActive ? d.maxPoints : 0), 0)} pts</p>
           </div>
-
           {domains.map((domain, idx) => (
             <DomainCard key={domain.id} domain={domain} index={idx} total={domains.length}
               onUpdate={updateDomain} onDelete={deleteDomain}
               onMoveUp={id => moveDomain(id, 'up')} onMoveDown={id => moveDomain(id, 'down')} />
           ))}
-
-          <button onClick={addDomain}
+          <button onClick={handleAddDomain}
             className="w-full flex items-center justify-center gap-1.5 py-3 border border-dashed border-border/60 rounded-xl text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors">
             <Plus className="h-3.5 w-3.5" /> Domein toevoegen
           </button>
