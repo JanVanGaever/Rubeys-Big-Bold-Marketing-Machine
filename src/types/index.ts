@@ -74,6 +74,8 @@ export interface AppSettings {
   recencyDecay: boolean;
   recencyDecayFactor: number;
   domainConfig: Record<Domain, { name: string; color: string; description: string }>;
+  profileName: string;
+  profileEmail: string;
 }
 
 export interface LemlistCampaign {
