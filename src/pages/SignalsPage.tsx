@@ -1,47 +1,40 @@
 import { Lock, Brain, Layers, ArrowRightLeft, Sparkles } from 'lucide-react';
-import { MOCK_DOMAINS, MOCK_CONTACTS, getPts } from '@/lib/mock-data';
+import { getPts } from '@/lib/mock-data';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
 export default function SignalsPage() {
-  const domains = MOCK_DOMAINS.filter(d => d.isActive);
-  const contacts = MOCK_CONTACTS;
+  const { domains, contacts } = useApp();
+  const activeDomains = domains.filter(d => d.isActive);
 
-  // Cross-signal stats
-  const contactDomainCounts = contacts.map(c => {
-    const domainSet = new Set(c.signals.map(s => s.type));
-    return domainSet.size;
-  });
+  const contactDomainCounts = contacts.map(c => new Set(c.signals.map(s => s.type)).size);
   const single = contactDomainCounts.filter(c => c === 1).length;
   const dual = contactDomainCounts.filter(c => c === 2).length;
   const triple = contactDomainCounts.filter(c => c >= 3).length;
 
   return (
     <div className="flex flex-col gap-6 h-full overflow-y-auto">
-      {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-foreground">Signalen</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Read-only overzicht van je signaalarchitectuur · {domains.length} domeinen · {domains.reduce((s, d) => s + d.items.length, 0)} organisaties
+          Read-only overzicht van je signaalarchitectuur · {activeDomains.length} domeinen · {activeDomains.reduce((s, d) => s + d.items.length, 0)} organisaties
         </p>
       </div>
 
-      {/* SECTION 1: Domain overview */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Layers className="h-3.5 w-3.5 text-muted-foreground" />
           <h2 className="text-sm font-medium text-foreground">Domein overzicht</h2>
         </div>
-        <div className={cn(
-          'grid gap-3',
-          domains.length <= 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
-          domains.length > 3 && 'xl:grid-cols-4'
+        <div className={cn('grid gap-3',
+          activeDomains.length <= 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+          activeDomains.length > 3 && 'xl:grid-cols-4'
         )}>
-          {domains.map(domain => {
+          {activeDomains.map(domain => {
             const activeItems = domain.items.filter(o => o.active);
             const totalPts = activeItems.reduce((s, _, i) => s + getPts(i, domain.maxPoints), 0);
             return (
               <div key={domain.id} className="bg-card border border-border rounded-xl flex flex-col">
-                {/* Domain header */}
                 <div className="px-4 pt-3 pb-2 border-b border-border">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: domain.color }} />
@@ -53,16 +46,11 @@ export default function SignalsPage() {
                     <span className="text-[10px] text-muted-foreground">Max {domain.maxPoints} pts</span>
                   </div>
                 </div>
-
-                {/* Org list */}
                 <div className="flex-1 px-3 py-2 space-y-0.5 max-h-72 overflow-y-auto">
                   {domain.items.sort((a, b) => a.rank - b.rank).map((org, idx) => {
                     const pts = getPts(idx, domain.maxPoints);
                     return (
-                      <div key={org.id} className={cn(
-                        'flex items-center gap-2 py-1.5 px-2 rounded-md',
-                        org.active ? '' : 'opacity-30'
-                      )}>
+                      <div key={org.id} className={cn('flex items-center gap-2 py-1.5 px-2 rounded-md', org.active ? '' : 'opacity-30')}>
                         <span className="text-[10px] font-mono text-muted-foreground/40 w-3 shrink-0">{org.rank}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[11px] text-foreground truncate">{org.name}</p>
@@ -77,8 +65,6 @@ export default function SignalsPage() {
                     );
                   })}
                 </div>
-
-                {/* Footer summary */}
                 <div className="px-4 py-2 border-t border-border/50 text-[9px] text-muted-foreground/40">
                   Pos. 1 = {domain.maxPoints} pts · 2 = {getPts(1, domain.maxPoints)} · 3 = {getPts(2, domain.maxPoints)} · Totaal bereik: {totalPts} pts
                 </div>
@@ -88,7 +74,6 @@ export default function SignalsPage() {
         </div>
       </div>
 
-      {/* SECTION 2: Cross-signals */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <ArrowRightLeft className="h-3.5 w-3.5 text-muted-foreground" />
@@ -128,12 +113,11 @@ export default function SignalsPage() {
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground/40 mt-3 text-center">
-            {contacts.length} contacten geanalyseerd · {dual + triple} met cross-domein activiteit ({Math.round(((dual + triple) / contacts.length) * 100)}%)
+            {contacts.length} contacten geanalyseerd · {dual + triple} met cross-domein activiteit ({contacts.length > 0 ? Math.round(((dual + triple) / contacts.length) * 100) : 0}%)
           </p>
         </div>
       </div>
 
-      {/* SECTION 3: AI Calibration */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Brain className="h-3.5 w-3.5 text-muted-foreground" />

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Database, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react';
-import { MOCK_CONTACTS } from '@/lib/mock-data';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
 export default function HubSpotPage() {
+  const { contacts } = useApp();
   const [syncing, setSyncing] = useState(false);
   const [lastSync] = useState('Vandaag 08:15');
-  const synced = MOCK_CONTACTS.filter(c => c.hubspotSynced);
-  const unsynced = MOCK_CONTACTS.filter(c => !c.hubspotSynced && c.status !== 'cold');
+  const synced = contacts.filter(c => c.hubspotSynced);
+  const unsynced = contacts.filter(c => !c.hubspotSynced && c.status !== 'cold');
 
   const doSync = () => {
     setSyncing(true);

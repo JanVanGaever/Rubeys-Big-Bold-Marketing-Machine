@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { Send, Play, Pause, Users, MessageSquare, TrendingUp } from 'lucide-react';
-import { MOCK_CAMPAIGNS, MOCK_CONTACTS } from '@/lib/mock-data';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
 
 export default function LemlistPage() {
-  const [campaigns] = useState(MOCK_CAMPAIGNS);
-  const hotLeads = MOCK_CONTACTS.filter(c => c.status === 'hot' && c.outreachStatus === 'not_contacted');
+  const { contacts, campaigns } = useApp();
+  const hotLeads = contacts.filter(c => c.status === 'hot' && c.outreachStatus === 'not_contacted');
 
   const STATUS_COLORS = { active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', paused: 'bg-orange-500/10 text-orange-400 border-orange-500/20', draft: 'bg-secondary text-muted-foreground border-border' };
   const STATUS_LABELS = { active: 'Actief', paused: 'Gepauzeerd', draft: 'Concept' };

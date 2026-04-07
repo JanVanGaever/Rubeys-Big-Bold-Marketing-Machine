@@ -1,15 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Database, Linkedin, Mail, Phone, MapPin, ExternalLink } from 'lucide-react';
-import { MOCK_CONTACTS, getScoreBadge, getOutreachLabel } from '@/lib/mock-data';
+import { getScoreBadge, getOutreachLabel } from '@/lib/mock-data';
+import { useApp } from '@/context/AppContext';
 import { cn } from '@/lib/utils';
-
-const DOMAIN_COLORS: Record<string, string> = { kunst: '#534AB7', vermogen: '#0fb57a', luxe: '#f4a261' };
-const DOMAIN_LABELS: Record<string, string> = { kunst: 'Kunst & Cultuur', vermogen: 'Vermogen & Banking', luxe: 'Luxe & Kapitaal' };
 
 export default function ContactDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const contact = MOCK_CONTACTS.find(c => c.id === id);
+  const { contacts, domains, getBreakdown } = useApp();
+  const contact = contacts.find(c => c.id === id);
 
   if (!contact) return (
     <div className="flex flex-col items-center justify-center h-64 gap-3">
@@ -19,10 +18,8 @@ export default function ContactDetailPage() {
   );
 
   const badge = getScoreBadge(contact.score);
-  const kunstPts = contact.signals.filter(s => s.type === 'kunst').reduce((s, i) => s + i.weight, 0);
-  const vermPts  = contact.signals.filter(s => s.type === 'vermogen').reduce((s, i) => s + i.weight, 0);
-  const luxePts  = contact.signals.filter(s => s.type === 'luxe').reduce((s, i) => s + i.weight, 0);
-  const hasCross = [kunstPts, vermPts, luxePts].filter(p => p > 0).length >= 2;
+  const breakdown = getBreakdown(contact);
+  const activeDomains = domains.filter(d => d.isActive);
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -39,7 +36,7 @@ export default function ContactDetailPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-semibold text-foreground">{contact.firstName} {contact.lastName}</h1>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded', badge.className)}>{badge.label}</span>
-              {hasCross && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Cross-signaal</span>}
+              {breakdown.domainCount >= 2 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Cross-signaal ({breakdown.crossMultiplier}x)</span>}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">{contact.title} · {contact.company}</p>
             <div className="flex flex-wrap gap-3 mt-2">
@@ -71,32 +68,52 @@ export default function ContactDetailPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* Score breakdown */}
         <div className="bg-card border border-border rounded-xl p-4">
           <h2 className="text-xs font-medium text-foreground mb-3">Score breakdown</h2>
           <div className="space-y-2">
-            {([['kunst', kunstPts, 35], ['vermogen', vermPts, 35], ['luxe', luxePts, 20]] as const).map(([type, pts, max]) => (
-              <div key={type}>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-2 h-2 rounded-full" style={{ background: DOMAIN_COLORS[type] }} />
-                    <span className="text-[11px] text-muted-foreground">{DOMAIN_LABELS[type]}</span>
+            {/* Domain scores */}
+            {activeDomains.map(d => {
+              const pts = breakdown.domainScores[d.id] ?? 0;
+              return (
+                <div key={d.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ background: d.color }} />
+                      <span className="text-[11px] text-muted-foreground">{d.name}</span>
+                    </div>
+                    <span className="text-[11px] font-mono text-foreground">{pts}/{d.maxPoints}</span>
                   </div>
-                  <span className="text-[11px] font-mono text-foreground">{pts}/{max}</span>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${(pts / d.maxPoints) * 100}%`, background: d.color }} />
+                  </div>
                 </div>
-                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${(pts / max) * 100}%`, background: DOMAIN_COLORS[type] }} />
-                </div>
-              </div>
-            ))}
-            {hasCross && (
+              );
+            })}
+            {breakdown.domainCount >= 2 && (
               <div className="mt-2 pt-2 border-t border-border flex items-center justify-between">
-                <span className="text-[11px] text-emerald-400">Cross-signaal bonus</span>
-                <span className="text-[11px] font-mono text-emerald-400">+10</span>
+                <span className="text-[11px] text-emerald-400">Cross-signaal bonus ({breakdown.crossMultiplier}x)</span>
               </div>
             )}
+            {/* Component scores */}
+            <div className="mt-3 pt-3 border-t border-border space-y-1.5">
+              {[
+                { label: 'Engagement', value: breakdown.engagement },
+                { label: 'Profiel Keywords', value: breakdown.profileKeywords },
+                { label: 'Cross-signaal', value: breakdown.crossSignal },
+                { label: 'Enrichment', value: breakdown.enrichment },
+                { label: 'Org. Diversiteit', value: breakdown.orgDiversity },
+              ].map(row => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">{row.label}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">{row.value}/100</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
+        {/* Outreach status */}
         <div className="bg-card border border-border rounded-xl p-4">
           <h2 className="text-xs font-medium text-foreground mb-3">Outreach status</h2>
           <div className="space-y-2">
@@ -116,20 +133,24 @@ export default function ContactDetailPage() {
         </div>
       </div>
 
+      {/* Signal history */}
       <div className="bg-card border border-border rounded-xl p-4">
         <h2 className="text-xs font-medium text-foreground mb-3">Signaalhistorie ({contact.signals.length})</h2>
         <div className="space-y-2">
-          {contact.signals.map((signal, i) => (
-            <div key={i} className="flex items-center gap-3 py-2 px-3 bg-secondary/30 rounded-lg">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: DOMAIN_COLORS[signal.type] }} />
-              <div className="flex-1">
-                <p className="text-xs text-foreground">{signal.source}</p>
-                <p className="text-[10px] text-muted-foreground">{DOMAIN_LABELS[signal.type]}</p>
+          {contact.signals.map((signal, i) => {
+            const domain = domains.find(d => d.id === signal.type);
+            return (
+              <div key={i} className="flex items-center gap-3 py-2 px-3 bg-secondary/30 rounded-lg">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: domain?.color ?? '#888' }} />
+                <div className="flex-1">
+                  <p className="text-xs text-foreground">{signal.source}</p>
+                  <p className="text-[10px] text-muted-foreground">{domain?.name ?? signal.type}</p>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground">+{signal.weight} pts</span>
+                <span className="text-[10px] text-muted-foreground">{signal.date}</span>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground">+{signal.weight} pts</span>
-              <span className="text-[10px] text-muted-foreground">{signal.date}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
