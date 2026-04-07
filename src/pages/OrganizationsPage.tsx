@@ -1,143 +1,229 @@
-import { useState } from 'react';
-import { Search, Plus, ThumbsUp, MessageSquare } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Search, Plus, ThumbsUp, MessageSquare, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { MOCK_DOMAINS } from '@/lib/mock-data';
 import { cn } from '@/lib/utils';
-import type { OrgSignal } from '@/types';
+import type { Domain, OrgSignal } from '@/types';
 
-const DOMAIN_COLORS: Record<string, string> = {};
-const DOMAIN_LABELS: Record<string, string> = {};
-MOCK_DOMAINS.forEach(d => { DOMAIN_COLORS[d.id] = d.color; DOMAIN_LABELS[d.id] = d.name; });
-
-type FilterDomain = 'all' | string;
+type ViewMode = 'all' | string;
 
 export default function OrganizationsPage() {
   const [search, setSearch] = useState('');
-  const [domainFilter, setDomainFilter] = useState<FilterDomain>('all');
-  const [orgs, setOrgs] = useState<OrgSignal[]>(MOCK_DOMAINS.flatMap(d => d.items));
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [domains, setDomains] = useState<Domain[]>(MOCK_DOMAINS);
+  const dragItem = useRef<{ domainId: string; itemId: string } | null>(null);
+  const dragOver = useRef<{ domainId: string; itemId: string } | null>(null);
 
-  const filtered = orgs.filter(o => {
-    const q = search.toLowerCase();
-    const matchSearch = !q || o.name.toLowerCase().includes(q) || o.city.toLowerCase().includes(q);
-    const matchDomain = domainFilter === 'all' || o.domainId === domainFilter;
-    return matchSearch && matchDomain;
-  });
+  const totalOrgs = domains.reduce((s, d) => s + d.items.length, 0);
+  const activeDomains = domains.filter(d => d.isActive);
+  const q = search.toLowerCase();
 
-  const toggleActive = (id: string) => {
-    setOrgs(prev => prev.map(o => o.id === id ? { ...o, active: !o.active } : o));
-  };
+  const filteredDomains = (viewMode === 'all' ? activeDomains : activeDomains.filter(d => d.id === viewMode))
+    .map(d => ({
+      ...d,
+      items: d.items
+        .filter(o => !q || o.name.toLowerCase().includes(q) || o.city.toLowerCase().includes(q))
+        .sort((a, b) => a.rank - b.rank),
+    }));
 
-  const totalActive = orgs.filter(o => o.active).length;
+  const toggleActive = useCallback((domainId: string, itemId: string) => {
+    setDomains(prev => prev.map(d =>
+      d.id === domainId ? { ...d, items: d.items.map(o => o.id === itemId ? { ...o, active: !o.active } : o) } : d
+    ));
+  }, []);
+
+  const moveItem = useCallback((domainId: string, itemId: string, direction: 'up' | 'down') => {
+    setDomains(prev => prev.map(d => {
+      if (d.id !== domainId) return d;
+      const items = [...d.items].sort((a, b) => a.rank - b.rank);
+      const idx = items.findIndex(i => i.id === itemId);
+      const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= items.length) return d;
+      [items[idx], items[targetIdx]] = [items[targetIdx], items[idx]];
+      return { ...d, items: items.map((item, i) => ({ ...item, rank: i + 1 })) };
+    }));
+  }, []);
+
+  const handleDragStart = useCallback((domainId: string, itemId: string) => {
+    dragItem.current = { domainId, itemId };
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, domainId: string, itemId: string) => {
+    e.preventDefault();
+    dragOver.current = { domainId, itemId };
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, targetDomainId: string, targetItemId: string) => {
+    e.preventDefault();
+    if (!dragItem.current) return;
+    const { domainId: srcDomain, itemId: srcItem } = dragItem.current;
+    if (srcDomain !== targetDomainId || srcItem === targetItemId) { dragItem.current = null; dragOver.current = null; return; }
+    setDomains(prev => prev.map(d => {
+      if (d.id !== srcDomain) return d;
+      const items = [...d.items].sort((a, b) => a.rank - b.rank);
+      const fi = items.findIndex(i => i.id === srcItem);
+      const ti = items.findIndex(i => i.id === targetItemId);
+      if (fi === -1 || ti === -1) return d;
+      const [moved] = items.splice(fi, 1);
+      items.splice(ti, 0, moved);
+      return { ...d, items: items.map((item, i) => ({ ...item, rank: i + 1 })) };
+    }));
+    dragItem.current = null;
+    dragOver.current = null;
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    dragItem.current = null;
+    dragOver.current = null;
+  }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-full">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Organisaties</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">{orgs.length} organisaties · {totalActive} actief</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => window.location.href = '/signals'}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary border border-border text-xs text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-          >
-            Signaal architectuur
-          </button>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs rounded-lg transition-colors">
-            <Plus className="h-3.5 w-3.5" /> Toevoegen
-          </button>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalOrgs} organisaties in {activeDomains.length} domeinen</p>
         </div>
       </div>
 
-      {/* Search + filters */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Search + domain filters */}
+      <div className="flex items-center gap-3 flex-wrap shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Zoeken..."
-            className="pl-9 pr-3 py-2 text-xs bg-secondary/40 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-52"
+            placeholder="Zoek organisatie of locatie..."
+            className="pl-9 pr-3 py-2 text-xs bg-secondary/40 border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-56"
           />
         </div>
         <div className="flex gap-1 flex-wrap">
           <button
-            onClick={() => setDomainFilter('all')}
+            onClick={() => setViewMode('all')}
             className={cn('px-2.5 py-1.5 text-[10px] border rounded-lg transition-colors',
-              domainFilter === 'all' ? 'bg-primary/10 text-primary border-primary/20' : 'border-border text-muted-foreground hover:text-foreground'
+              viewMode === 'all' ? 'bg-primary/10 text-primary border-primary/20 font-medium' : 'border-border text-muted-foreground hover:text-foreground'
             )}
           >
-            Alle
+            Alle domeinen
           </button>
-          {MOCK_DOMAINS.map(d => (
+          {activeDomains.map(d => (
             <button
               key={d.id}
-              onClick={() => setDomainFilter(d.id)}
+              onClick={() => setViewMode(viewMode === d.id ? 'all' : d.id)}
               className={cn('px-2.5 py-1.5 text-[10px] border rounded-lg transition-colors flex items-center gap-1.5',
-                domainFilter === d.id ? 'bg-primary/10 text-primary border-primary/20' : 'border-border text-muted-foreground hover:text-foreground'
+                viewMode === d.id ? 'bg-primary/10 text-primary border-primary/20 font-medium' : 'border-border text-muted-foreground hover:text-foreground'
               )}
             >
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: d.color }} />
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: d.color }} />
               {d.name}
+              <span className="text-muted-foreground/50">{d.items.length}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-3 gap-3">
-        {filtered.map(org => {
-          const domainColor = DOMAIN_COLORS[org.domainId] ?? '#888';
-          const domainLabel = DOMAIN_LABELS[org.domainId] ?? org.domainId;
-          return (
-            <div
-              key={org.id}
-              className={cn('bg-card border rounded-xl p-4 transition-all', org.active ? 'border-border' : 'border-border/30 opacity-50')}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{org.name}</p>
-                  <p className="text-xs text-muted-foreground">{org.city}, {org.country}</p>
-                </div>
-                {/* Toggle */}
-                <button
-                  onClick={() => toggleActive(org.id)}
-                  className={cn('w-9 h-5 rounded-full transition-all shrink-0 relative', org.active ? 'bg-primary' : 'bg-secondary border border-border')}
-                >
-                  <div className={cn('w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all', org.active ? 'left-[18px]' : 'left-0.5')} />
-                </button>
+      {/* Domain columns */}
+      <div className={cn(
+        'flex-1 min-h-0 grid gap-3',
+        filteredDomains.length === 1 ? 'grid-cols-1 max-w-lg' : filteredDomains.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+        filteredDomains.length > 3 && 'xl:grid-cols-4'
+      )}>
+        {filteredDomains.map(domain => (
+          <div key={domain.id} className="flex flex-col bg-card border border-border rounded-xl min-h-0">
+            {/* Column header */}
+            <div className="px-3 pt-3 pb-2 border-b border-border shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: domain.color }} />
+                <span className="text-xs font-medium text-foreground flex-1">{domain.name}</span>
+                <span className="text-[10px] text-muted-foreground">{domain.items.length} org.</span>
               </div>
-
-              {/* Badges */}
-              <div className="flex gap-1.5 flex-wrap mb-3">
-                <span className="text-[10px] px-1.5 py-0.5 rounded border" style={{ background: `${domainColor}15`, color: domainColor, borderColor: `${domainColor}30` }}>
-                  {domainLabel}
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
-                  Rang {org.rank}
-                </span>
-              </div>
-
-              {/* Stats */}
-              <div className="flex gap-3">
-                <div className="flex items-center gap-1">
-                  <div className="w-4 h-4 rounded bg-[#534AB7]/10 flex items-center justify-center">
-                    <ThumbsUp className="h-2.5 w-2.5 text-[#534AB7]" />
-                  </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">{org.likes}</span>
-                  <span className="text-[10px] text-muted-foreground/60">likes</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-4 h-4 rounded bg-[#0fb57a]/10 flex items-center justify-center">
-                    <MessageSquare className="h-2.5 w-2.5 text-[#0fb57a]" />
-                  </div>
-                  <span className="text-[10px] font-mono text-muted-foreground">{org.comments}</span>
-                  <span className="text-[10px] text-muted-foreground/60">reacties</span>
-                </div>
-              </div>
+              {domain.description && (
+                <p className="text-[9px] text-muted-foreground/50 mt-0.5 pl-4">{domain.description}</p>
+              )}
             </div>
-          );
-        })}
+
+            {/* Items */}
+            <div className="flex-1 overflow-y-auto px-2 py-2 min-h-0 space-y-1">
+              {domain.items.map((org, idx) => (
+                <div
+                  key={org.id}
+                  draggable
+                  onDragStart={() => handleDragStart(domain.id, org.id)}
+                  onDragOver={e => handleDragOver(e, domain.id, org.id)}
+                  onDrop={e => handleDrop(e, domain.id, org.id)}
+                  onDragEnd={handleDragEnd}
+                  className={cn(
+                    'flex items-center gap-1.5 bg-secondary/40 rounded-md cursor-grab active:cursor-grabbing select-none transition-all border',
+                    org.active ? 'border-border/60' : 'border-border/20 opacity-40',
+                    dragItem.current?.itemId === org.id && 'opacity-30',
+                    dragOver.current?.itemId === org.id && dragOver.current?.domainId === domain.id && 'border-primary border-dashed'
+                  )}
+                >
+                  {/* Drag handle */}
+                  <div className="w-5 flex items-center justify-center py-2 shrink-0 text-muted-foreground/20">
+                    <GripVertical className="h-3 w-3" />
+                  </div>
+
+                  {/* Rank */}
+                  <span className="text-[10px] font-mono text-muted-foreground/40 w-3 shrink-0">{org.rank}</span>
+
+                  {/* Content */}
+                  <div className="flex-1 py-1.5 pr-1 min-w-0">
+                    <p className="text-[11px] font-medium text-foreground leading-tight truncate">{org.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[9px] text-muted-foreground/50 truncate">{org.city}</span>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <ThumbsUp className="h-2 w-2 text-muted-foreground/30" />
+                          <span className="text-[9px] font-mono text-muted-foreground/50">{org.likes}</span>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <MessageSquare className="h-2 w-2 text-muted-foreground/30" />
+                          <span className="text-[9px] font-mono text-muted-foreground/50">{org.comments}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Move arrows */}
+                  <div className="flex flex-col shrink-0">
+                    <button onClick={() => moveItem(domain.id, org.id, 'up')} disabled={idx === 0}
+                      className={cn('p-0.5', idx === 0 ? 'text-muted-foreground/10' : 'text-muted-foreground/30 hover:text-foreground')}>
+                      <ChevronUp className="h-2.5 w-2.5" />
+                    </button>
+                    <button onClick={() => moveItem(domain.id, org.id, 'down')} disabled={idx === domain.items.length - 1}
+                      className={cn('p-0.5', idx === domain.items.length - 1 ? 'text-muted-foreground/10' : 'text-muted-foreground/30 hover:text-foreground')}>
+                      <ChevronDown className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+
+                  {/* Active toggle */}
+                  <button
+                    onClick={() => toggleActive(domain.id, org.id)}
+                    className={cn('w-7 h-4 rounded-full transition-all shrink-0 relative mr-1.5',
+                      org.active ? 'bg-primary' : 'bg-secondary border border-border'
+                    )}
+                  >
+                    <div className={cn('w-2.5 h-2.5 rounded-full bg-white absolute top-[3px] transition-all',
+                      org.active ? 'left-[14px]' : 'left-[3px]'
+                    )} />
+                  </button>
+                </div>
+              ))}
+
+              {domain.items.length === 0 && (
+                <p className="text-[10px] text-muted-foreground/30 text-center py-4">Geen resultaten</p>
+              )}
+            </div>
+
+            {/* Add button */}
+            <div className="px-2 pb-2 shrink-0">
+              <button className="w-full text-[10px] text-muted-foreground/40 border border-dashed border-border/30 rounded-md py-1.5 hover:border-border hover:text-muted-foreground transition-colors flex items-center justify-center gap-1">
+                <Plus className="h-3 w-3" /> Toevoegen
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
