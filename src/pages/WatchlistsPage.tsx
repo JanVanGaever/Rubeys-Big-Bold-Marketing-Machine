@@ -133,7 +133,8 @@ export default function WatchlistsPage() {
 }
 
 function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose: () => void; defaultDomain: Domain }) {
-  const { addWatchlistOrg } = useStore();
+  const { addWatchlistOrg, settings } = useStore();
+  const domainConfig = settings.domainConfig;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [domain, setDomain] = useState<Domain>(defaultDomain);
