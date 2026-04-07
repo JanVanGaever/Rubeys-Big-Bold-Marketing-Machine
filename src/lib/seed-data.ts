@@ -329,4 +329,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     beleggen: { name: 'Beleggen & Financiën', color: '#378ADD', description: 'Banken, vermogensbeheerders, family offices' },
     luxe: { name: 'Luxe & Lifestyle', color: '#D85A30', description: 'Luxemerken, vastgoed, prestigieuze evenementen' },
   },
+  profileName: 'Rubey',
+  profileEmail: 'rubey@merciervanderlinden.be',
 };

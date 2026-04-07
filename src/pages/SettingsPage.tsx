@@ -132,8 +132,8 @@ export default function SettingsPage() {
           <Card className="bg-card border-border"><CardContent className="p-4 space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Profiel</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Naam</Label><Input value="Rubey" disabled className="h-8 text-xs mt-1" /></div>
-              <div><Label className="text-xs">Email</Label><Input value="rubey@merciervanderlinden.be" disabled className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Naam</Label><Input value={settings.profileName} onChange={e => updateSettings({ profileName: e.target.value })} className="h-8 text-xs mt-1" /></div>
+              <div><Label className="text-xs">Email</Label><Input value={settings.profileEmail} onChange={e => updateSettings({ profileEmail: e.target.value })} className="h-8 text-xs mt-1" /></div>
             </div>
           </CardContent></Card>
         </TabsContent>
