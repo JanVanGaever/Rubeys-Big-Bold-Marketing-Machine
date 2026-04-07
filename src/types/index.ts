@@ -53,7 +53,7 @@ export interface Contact {
   email: string | null;
   phone: string | null;
   location: string | null;
-  source: 'auto' | 'manual';
+  source: 'auto' | 'manual' | 'import';
   addedAt: string;
   domains: Record<Domain, DomainPresence>;
   activeDomainCount: number;
