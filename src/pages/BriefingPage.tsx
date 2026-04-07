@@ -78,15 +78,10 @@ export default function BriefingPage() {
                   <p className="text-lg font-semibold text-foreground">{contact.score}</p>
                   <p className="text-[10px] text-muted-foreground">score</p>
                 </div>
-                <div className="flex gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {domains.filter(d => d.isActive).map(d => {
-                    const count = contact.signals.filter(s => s.type === d.id).length;
-                    return (
-                      <div key={d.id} className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-mono font-medium"
-                        style={{ background: `${d.color}20`, color: d.color }}>
-                        {count}
-                      </div>
-                    );
+                    const has = contact.signals.some(s => s.type === d.id);
+                    return <div key={d.id} className={cn('w-2.5 h-2.5 rounded-full', has ? 'opacity-100' : 'opacity-20')} style={{ background: d.color }} />;
                   })}
                 </div>
                 <div className="flex gap-2 shrink-0">
