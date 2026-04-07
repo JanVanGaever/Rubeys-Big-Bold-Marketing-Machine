@@ -38,8 +38,7 @@ export interface OrgSignal {
   name: string;
   city: string;
   country: string;
-  type: 'museum' | 'bank' | 'family_office' | 'luxury_brand' | 'kunstbeurs' | 'galerij' | 'overig';
-  domain: SignalType;
+  domainId: string;
   rank: number;
   active: boolean;
   likes: number;
