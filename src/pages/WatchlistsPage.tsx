@@ -42,8 +42,8 @@ export default function WatchlistsPage() {
         <Button size="sm" variant={activeDomain === 'all' ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setActiveDomain('all')}>Alle</Button>
         {ALL_DOMAINS.map(d => (
           <Button key={d} size="sm" variant={activeDomain === d ? 'default' : 'outline'} className="text-xs h-8 gap-1.5" onClick={() => setActiveDomain(d)}>
-            <div className="w-2 h-2 rounded-full" style={{ background: DOMAIN_META[d].color }} />
-            {DOMAIN_META[d].name.split(' ')[0]}
+            <div className="w-2 h-2 rounded-full" style={{ background: domainConfig[d].color }} />
+            {domainConfig[d].name.split(' ')[0]}
           </Button>
         ))}
       </div>
@@ -57,8 +57,8 @@ export default function WatchlistsPage() {
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: DOMAIN_META[domain].color }} />
-                    <h3 className="text-sm font-semibold text-foreground">{DOMAIN_META[domain].name}</h3>
+                    <div className="w-3 h-3 rounded-full" style={{ background: domainConfig[domain].color }} />
+                    <h3 className="text-sm font-semibold text-foreground">{domainConfig[domain].name}</h3>
                     <Badge variant="outline" className="text-[10px]">{orgs.length}</Badge>
                   </div>
                   <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => { setAddDomain(domain); setShowAdd(true); }}>
@@ -163,7 +163,7 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
               <Select value={domain} onValueChange={v => setDomain(v as Domain)}>
                 <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{DOMAIN_META[d].name}</SelectItem>)}
+                  {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{domainConfig[d].name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
