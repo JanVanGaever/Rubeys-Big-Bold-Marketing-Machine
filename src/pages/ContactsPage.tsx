@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Users, Upload } from 'lucide-react';
+import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Users, Upload, Star, CheckSquare } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ALL_DOMAINS } from '@/types';
 import type { Contact } from '@/types';
@@ -16,6 +16,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 const statusColors: Record<Contact['status'], string> = { hot: 'bg-red-500', warm: 'bg-amber-500', cold: 'bg-muted-foreground/40' };
 
@@ -37,13 +39,15 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 }
 
 export default function ContactsPage() {
-  const { contacts, signals, settings, addContact, updateContact } = useStore();
+  const { contacts, signals, settings, addContact, updateContact, toggleCustomer } = useStore();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sort, setSort] = useState<string>('score');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -52,6 +56,7 @@ export default function ContactsPage() {
       list = list.filter(c => `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) || (c.company ?? '').toLowerCase().includes(q) || (c.title ?? '').toLowerCase().includes(q));
     }
     if (statusFilter === 'manual') list = list.filter(c => c.source === 'manual');
+    else if (statusFilter === 'klanten') list = list.filter(c => c.isCustomer);
     else if (statusFilter !== 'all') list = list.filter(c => c.status === statusFilter);
     const sorted = [...list];
     if (sort === 'score') sorted.sort((a, b) => b.totalScore - a.totalScore);
@@ -67,6 +72,24 @@ export default function ContactsPage() {
   const selected = contacts.find(c => c.id === selectedId) ?? null;
   const w = settings.scoreWeights;
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkTag = (isCustomer: boolean) => {
+    selectedIds.forEach(id => {
+      const c = contacts.find(ct => ct.id === id);
+      if (c && c.isCustomer !== isCustomer) toggleCustomer(id);
+    });
+    toast.success(`${selectedIds.size} contacten ${isCustomer ? 'getagd als klant' : 'klant-tag verwijderd'}`);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -74,7 +97,12 @@ export default function ContactsPage() {
           <h1 className="text-2xl font-bold text-foreground">Contacten</h1>
           <p className="text-xs text-muted-foreground">{contacts.length} leads in database</p>
         </div>
-        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1 text-xs"><Plus className="h-3.5 w-3.5" />Prospect toevoegen</Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={selectMode ? 'default' : 'outline'} onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }} className="gap-1 text-xs">
+            <CheckSquare className="h-3.5 w-3.5" />{selectMode ? 'Annuleer' : 'Selecteer'}
+          </Button>
+          <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1 text-xs"><Plus className="h-3.5 w-3.5" />Prospect toevoegen</Button>
+        </div>
       </div>
 
       {contacts.length === 0 ? (
@@ -90,8 +118,8 @@ export default function ContactsPage() {
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Zoek naam, bedrijf, titel..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-xs" />
         </div>
-        <div className="flex gap-1">
-          {[{ key: 'all', label: 'Alle' }, { key: 'hot', label: 'Hot' }, { key: 'warm', label: 'Warm' }, { key: 'cold', label: 'Cold' }, { key: 'manual', label: 'Manueel' }].map(f => (
+        <div className="flex gap-1 flex-wrap">
+          {[{ key: 'all', label: 'Alle' }, { key: 'hot', label: 'Hot' }, { key: 'warm', label: 'Warm' }, { key: 'cold', label: 'Cold' }, { key: 'klanten', label: 'Klanten' }, { key: 'manual', label: 'Manueel' }].map(f => (
             <Button key={f.key} size="sm" variant={statusFilter === f.key ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setStatusFilter(f.key)}>{f.label}</Button>
           ))}
         </div>
@@ -110,6 +138,7 @@ export default function ContactsPage() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border text-muted-foreground">
+                {selectMode && <th className="p-3 w-8"></th>}
                 <th className="text-left p-3 font-medium w-8"></th>
                 <th className="text-left p-3 font-medium">Naam</th>
                 <th className="text-left p-3 font-medium">Titel & Bedrijf</th>
@@ -121,12 +150,18 @@ export default function ContactsPage() {
             </thead>
             <tbody>
               {filtered.map(c => (
-                <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setSelectedId(c.id)}>
+                <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => selectMode ? toggleSelect(c.id) : setSelectedId(c.id)}>
+                  {selectMode && (
+                    <td className="p-3">
+                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                    </td>
+                  )}
                   <td className="p-3"><div className={`w-2 h-2 rounded-full ${statusColors[c.status]}`} /></td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
                       <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0"><span className="text-[10px] font-semibold">{c.firstName[0]}{c.lastName[0]}</span></div>
                       <span className="font-medium text-foreground">{c.firstName} {c.lastName}</span>
+                      {c.isCustomer && <Star className="h-3 w-3 text-yellow-400 fill-yellow-400 shrink-0" />}
                     </div>
                   </td>
                   <td className="p-3 text-muted-foreground">{c.title}{c.company ? ` — ${c.company}` : ''}</td>
@@ -151,6 +186,18 @@ export default function ContactsPage() {
           </table>
         </CardContent>
       </Card>
+
+      {/* Multi-select action bar */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="sticky bottom-0 bg-card border-t border-border p-3 flex items-center gap-3 rounded-t-lg">
+          <span className="text-xs text-foreground font-medium">{selectedIds.size} geselecteerd</span>
+          <Button size="sm" className="text-xs gap-1" onClick={() => handleBulkTag(true)}>
+            <Star className="h-3 w-3" />Tag als klant
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs" onClick={() => handleBulkTag(false)}>Verwijder klant-tag</Button>
+          <Button size="sm" variant="ghost" className="text-xs" onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}>Annuleer</Button>
+        </div>
+      )}
       </>
       )}
 
@@ -166,6 +213,16 @@ export default function ContactsPage() {
                     <SheetTitle className="text-foreground">{selected.firstName} {selected.lastName}</SheetTitle>
                     <p className="text-xs text-muted-foreground">{selected.title} — {selected.company}</p>
                   </div>
+                </div>
+                {/* Customer toggle */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <Label className="text-xs font-medium text-foreground">Bestaande klant</Label>
+                    {selected.isCustomer && selected.customerSince && (
+                      <p className="text-[10px] text-muted-foreground">Klant sinds {new Date(selected.customerSince).toLocaleDateString('nl-BE')}</p>
+                    )}
+                  </div>
+                  <Switch checked={selected.isCustomer} onCheckedChange={() => toggleCustomer(selected.id)} />
                 </div>
               </SheetHeader>
               <div className="space-y-6 text-xs">
@@ -248,8 +305,7 @@ export default function ContactsPage() {
 }
 
 function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { settings } = useStore();
-  const { addContact } = useStore();
+  const { settings, addContact } = useStore();
   const [form, setForm] = useState({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false } as Record<string, boolean>, notes: '' });
 
   const handleSave = () => {
@@ -295,7 +351,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
               {ALL_DOMAINS.map(d => (
                 <label key={d} className="flex items-center gap-2 text-xs text-foreground">
                   <Checkbox checked={form.domains[d]} onCheckedChange={v => setForm(p => ({ ...p, domains: { ...p.domains, [d]: !!v } }))} />
-                  {settings.domainConfig[d].name.split(' ')[0]}
+                  {settings.domainConfig[d].name}
                 </label>
               ))}
             </div>
@@ -304,7 +360,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose} className="text-xs">Annuleren</Button>
-          <Button size="sm" onClick={handleSave} className="text-xs">Opslaan</Button>
+          <Button size="sm" onClick={handleSave} className="text-xs">Toevoegen</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
