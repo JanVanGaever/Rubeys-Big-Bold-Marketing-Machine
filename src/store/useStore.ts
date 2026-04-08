@@ -257,6 +257,10 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     const settings = s.settings;
     return { watchlistOrgs: updated, contacts: recompute(s.contacts, s.signals, settings, updated) };
   }),
+
+  addImportRecord: (record) => set(s => ({
+    importHistory: [record, ...s.importHistory],
+  })),
 }), {
   name: 'rubey-store',
   partialize: (state) => ({
@@ -264,6 +268,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     signals: state.signals,
     contacts: state.contacts,
     campaigns: state.campaigns,
+    importHistory: state.importHistory,
     settings: state.settings,
   }),
 }));
