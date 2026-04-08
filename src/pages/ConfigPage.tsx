@@ -6,6 +6,7 @@ import {
   Tags,
   Database,
   HardDrive,
+  Upload,
   Send,
   Palette,
   Bell,
