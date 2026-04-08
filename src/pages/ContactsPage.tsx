@@ -77,7 +77,7 @@ export default function ContactsPage() {
           (c.title ?? "").toLowerCase().includes(q),
       );
     }
-    if (statusFilter === "manual") list = list.filter((c) => c.source === "manual");
+    
     else if (statusFilter === "klanten") list = list.filter((c) => c.isCustomer);
     else if (statusFilter !== "all") list = list.filter((c) => c.status === statusFilter);
     const sorted = [...list];
@@ -179,7 +179,7 @@ export default function ContactsPage() {
                 { key: "warm", label: "Warm" },
                 { key: "cold", label: "Cold" },
                 { key: "klanten", label: "Klanten" },
-                { key: "manual", label: "Manueel" },
+                
               ].map((f) => (
                 <Button
                   key={f.key}

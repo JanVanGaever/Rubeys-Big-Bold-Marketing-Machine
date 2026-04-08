@@ -205,12 +205,9 @@ function ScoringSection() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-medium text-foreground">Component gewichten</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-              Relatieve gewichten
-            </span>
-            <span>Totaal: {total}/100</span>
-          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            Relatieve gewichten (som: {total})
+          </span>
         </div>
         {weights.map((w) => (
           <SliderRow
