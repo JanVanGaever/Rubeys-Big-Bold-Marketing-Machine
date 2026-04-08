@@ -38,6 +38,7 @@ interface AppState {
   setThreshold: (type: 'hot' | 'warm', value: number) => void;
   setDecayDays: (days: number) => void;
   updateOrgRank: (id: string, newRank: number) => void;
+  addImportRecord: (record: ImportRecord) => void;
 }
 
 const ENGAGEMENT_CAP = 30;
