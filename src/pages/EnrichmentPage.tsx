@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database, CheckCircle, XCircle, Mail, Phone, Zap, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { enrichContact, enrichBatch, isConnectionReady } from '@/lib/api-service';
 import { toast } from 'sonner';

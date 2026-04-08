@@ -57,6 +57,25 @@ export default function WatchlistsPage() {
     if (newRank !== org.rank) updateOrgRank(org.id, newRank);
   };
 
+  if (watchlistOrgs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+        <Eye className="h-10 w-10 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">Nog geen organisaties op je watchlist</p>
+          <p className="text-xs text-muted-foreground">Voeg organisaties toe om LinkedIn engagement te monitoren.</p>
+        </div>
+        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" />Organisatie toevoegen
+        </Button>
+        <Link to="/handleiding#watchlists" className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors">
+          Bekijk de handleiding
+        </Link>
+        <AddOrgDialog open={showAdd} onClose={() => setShowAdd(false)} defaultDomain={addDomainId} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
