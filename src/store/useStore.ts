@@ -15,6 +15,7 @@ import type {
 } from "@/types";
 import { DEFAULT_DOMAINS } from "@/types";
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from "@/lib/seed-data";
+import { normalizeLinkedInUrl } from "@/lib/normalize";
 
 interface AppState {
   watchlistOrgs: WatchlistOrg[];
@@ -275,13 +276,15 @@ export const useStore = create<AppState>()(
 
       addSignal: (signal) =>
         set((s) => {
-          const signals = [...s.signals, signal];
+          const normalized = { ...signal, contactLinkedinUrl: normalizeLinkedInUrl(signal.contactLinkedinUrl) };
+          const signals = [...s.signals, normalized];
           return { signals, contacts: recompute(s.contacts, signals, s.settings, s.watchlistOrgs) };
         }),
 
       addContact: (contact) =>
         set((s) => {
-          const contacts = [...s.contacts, contact];
+          const normalized = { ...contact, linkedinUrl: normalizeLinkedInUrl(contact.linkedinUrl) };
+          const contacts = [...s.contacts, normalized];
           return { contacts: recompute(contacts, s.signals, s.settings, s.watchlistOrgs) };
         }),
       updateContact: (id, updates) =>
