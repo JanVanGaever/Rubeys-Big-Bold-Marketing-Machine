@@ -269,7 +269,7 @@ function SetupDashboard() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleTest(conn.id)} disabled={conn.status === 'testing' || needsN8n}
                       className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : 'Test opnieuw'}
+                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test opnieuw'}
                     </button>
                   </div>
                 </div>
