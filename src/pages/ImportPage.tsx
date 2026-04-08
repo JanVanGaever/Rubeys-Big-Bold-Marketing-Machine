@@ -437,6 +437,29 @@ export default function ImportPage() {
             <p className="text-[10px] text-muted-foreground">Phantombuster stuurt signalen automatisch via n8n naar deze app.</p>
           </div>
 
+          {/* Auto-import status */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+            <div>
+              <p className="text-xs font-medium text-foreground">Automatische import</p>
+              <p className="text-[10px] text-muted-foreground">
+                {phantomConfig?.phantomId
+                  ? `Phantom ${phantomConfig.phantomId} stuurt signalen automatisch via n8n. Frequentie: ${phantomConfig.scrapeFrequency === 'daily' ? 'dagelijks' : phantomConfig.scrapeFrequency === 'weekly' ? 'wekelijks' : 'manueel'}.`
+                  : 'Configureer een Phantom ID in Setup om signalen automatisch te ontvangen.'}
+              </p>
+            </div>
+            {phantomConfig?.phantomId ? (
+              <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20 shrink-0">Actief</Badge>
+            ) : (
+              <Badge className="text-[9px] bg-muted text-muted-foreground border-border shrink-0">Niet geconfigureerd</Badge>
+            )}
+          </div>
+
+          {phantomConfig?.lastSignalReceivedAt && (
+            <p className="text-[10px] text-muted-foreground">
+              Laatste signalen ontvangen: {relativeTime(phantomConfig.lastSignalReceivedAt)}
+            </p>
+          )}
+
           <div className="border-t border-border pt-4">
             <p className="text-xs text-muted-foreground mb-2">Manuele Phantombuster CSV import:</p>
             <div
