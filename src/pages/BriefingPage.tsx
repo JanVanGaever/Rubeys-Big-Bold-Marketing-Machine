@@ -140,8 +140,14 @@ export default function BriefingPage() {
                       </div>
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center gap-1.5">
                             <p className="text-sm font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                            {c.email ? (
+                              <Mail className="h-3 w-3 text-green-400" />
+                            ) : (
+                              <AlertTriangle className="h-3 w-3 text-amber-400" />
+                            )}
+                          </div>
                             <p className="text-xs text-muted-foreground">{c.title} — {c.company}</p>
                           </div>
                           <div className="text-right flex items-center gap-2">
@@ -173,9 +179,15 @@ export default function BriefingPage() {
                         <p className="text-xs text-muted-foreground italic">{item.reason}</p>
                       </div>
                       {item.type === 'new' && (
-                        <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => handlePushToLemlist(c)}>
-                          <Send className="h-3.5 w-3.5" />Push naar Lemlist
-                        </Button>
+                        c.email ? (
+                          <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => handlePushToLemlist(c)}>
+                            <Send className="h-3.5 w-3.5" />Push naar Lemlist
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="shrink-0 text-xs gap-1 text-amber-400 border-amber-500/30" onClick={() => navigate('/enrichment')}>
+                            <AlertTriangle className="h-3.5 w-3.5" />Verrijk
+                          </Button>
+                        )
                       )}
                       {item.type === 'followup' && (
                         <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => window.open(`https://${c.linkedinUrl}`, '_blank')}>
