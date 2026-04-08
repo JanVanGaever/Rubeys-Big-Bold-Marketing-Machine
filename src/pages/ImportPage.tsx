@@ -6,28 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
-import type { Domain } from '@/types';
-
-interface ImportRecord {
-  id: string;
-  date: string;
-  type: 'CSV' | 'Phantombuster';
-  records: number;
-  imported: number;
-  duplicates: number;
-  errors: number;
-  status: 'success' | 'partial' | 'error';
-}
-
-const MOCK_HISTORY: ImportRecord[] = [
-  { id: '1', date: '2026-04-07T10:30:00Z', type: 'CSV', records: 25, imported: 22, duplicates: 3, errors: 0, status: 'success' },
-  { id: '2', date: '2026-04-05T14:15:00Z', type: 'Phantombuster', records: 48, imported: 41, duplicates: 5, errors: 2, status: 'partial' },
-  { id: '3', date: '2026-04-03T09:00:00Z', type: 'CSV', records: 12, imported: 12, duplicates: 0, errors: 0, status: 'success' },
-  { id: '4', date: '2026-04-01T16:45:00Z', type: 'Phantombuster', records: 33, imported: 30, duplicates: 3, errors: 0, status: 'success' },
-  { id: '5', date: '2026-03-28T11:20:00Z', type: 'CSV', records: 8, imported: 6, duplicates: 1, errors: 1, status: 'partial' },
-];
+import { toast } from 'sonner';
 
 const APP_FIELDS = [
   { key: 'linkedinUrl', label: 'LinkedIn URL', required: true },
@@ -53,14 +34,15 @@ function relativeTime(iso: string) {
 }
 
 export default function ImportPage() {
-  const { contacts, addContact } = useStore();
+  const { contacts, addContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores } = useStore();
   const [csvData, setCsvData] = useState<string[][] | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
   const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; errors: number } | null>(null);
   const [phantomData, setPhantomData] = useState<string[][] | null>(null);
   const [phantomHeaders, setPhantomHeaders] = useState<string[]>([]);
-  const [phantomResult, setPhantomResult] = useState<{ newContacts: number; updated: number; newSignals: number } | null>(null);
+  const [phantomResult, setPhantomResult] = useState<{ newContacts: number; updated: number; newSignals: number; skippedSignals: number } | null>(null);
+  const [phantomImporting, setPhantomImporting] = useState(false);
   const [dragActive, setDragActive] = useState<'csv' | 'phantom' | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const phantomRef = useRef<HTMLInputElement>(null);
@@ -80,7 +62,6 @@ export default function ImportPage() {
       setCsvHeaders(headers);
       setCsvData(rows);
       setImportResult(null);
-      // Auto-map columns
       const mapping: Record<number, string> = {};
       headers.forEach((h, i) => {
         const lower = h.toLowerCase();
@@ -106,21 +87,10 @@ export default function ImportPage() {
       setPhantomHeaders(headers);
       setPhantomData(rows);
       setPhantomResult(null);
-      // Simulate detection
-      const existingUrls = new Set(contacts.map(c => c.linkedinUrl));
-      let newC = 0, updated = 0;
-      rows.forEach(row => {
-        const urlIdx = headers.findIndex(h => h.toLowerCase().includes('profileurl') || h.toLowerCase().includes('linkedin'));
-        if (urlIdx >= 0 && row[urlIdx]) {
-          const url = row[urlIdx].toLowerCase().replace(/\/$/, '');
-          if (existingUrls.has(url)) updated++;
-          else newC++;
-        }
-      });
-      setPhantomResult({ newContacts: newC, updated, newSignals: Math.floor(rows.length * 1.5) });
+      setPhantomImporting(false);
     };
     reader.readAsText(file);
-  }, [contacts]);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, target: 'csv' | 'phantom') => {
     e.preventDefault();
@@ -187,6 +157,153 @@ export default function ImportPage() {
       } catch { errors++; }
     });
     setImportResult({ imported, duplicates, errors });
+
+    addImportRecord({
+      id: `imp-${Date.now()}`,
+      date: new Date().toISOString(),
+      type: 'CSV',
+      records: csvData.length,
+      imported,
+      duplicates,
+      errors,
+      status: errors > 0 ? 'partial' : 'success',
+    });
+  };
+
+  const doPhantomImport = () => {
+    if (!phantomData || !phantomHeaders.length) return;
+    setPhantomImporting(true);
+
+    // Auto-detect column mapping
+    const colMap: Record<string, number> = {};
+    phantomHeaders.forEach((h, i) => {
+      const lower = h.toLowerCase();
+      if (lower === 'profileurl' || lower === 'profile_url' || lower.includes('linkedin')) colMap['profileUrl'] = i;
+      else if (lower === 'firstname' || lower === 'first_name') colMap['firstName'] = i;
+      else if (lower === 'lastname' || lower === 'last_name') colMap['lastName'] = i;
+      else if (lower === 'headline') colMap['headline'] = i;
+      else if (lower === 'companyname' || lower === 'company_name' || lower === 'company') colMap['companyName'] = i;
+      else if (lower === 'posturl' || lower === 'post_url') colMap['postUrl'] = i;
+      else if (lower === 'action') colMap['action'] = i;
+      else if (lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
+      else if (lower === 'timestamp') colMap['timestamp'] = i;
+    });
+
+    let newContacts = 0, updated = 0, newSignals = 0, skippedSignals = 0;
+    const existingUrls = new Set(contacts.map(c => c.linkedinUrl));
+    const currentContacts = useStore.getState().contacts;
+
+    phantomData.forEach(row => {
+      const profileUrl = colMap['profileUrl'] !== undefined ? row[colMap['profileUrl']]?.toLowerCase().replace(/\/$/, '') : null;
+      if (!profileUrl) return;
+
+      const firstName = colMap['firstName'] !== undefined ? row[colMap['firstName']] || 'Onbekend' : 'Onbekend';
+      const lastName = colMap['lastName'] !== undefined ? row[colMap['lastName']] || '' : '';
+      const headline = colMap['headline'] !== undefined ? row[colMap['headline']] || null : null;
+      const companyName = colMap['companyName'] !== undefined ? row[colMap['companyName']] || null : null;
+
+      // Create or find contact
+      if (!existingUrls.has(profileUrl)) {
+        addContact({
+          id: `phantom-${Date.now()}-${newContacts}`,
+          linkedinUrl: profileUrl,
+          firstName,
+          lastName,
+          title: headline,
+          company: companyName,
+          email: null,
+          phone: null,
+          location: null,
+          source: 'import',
+          addedAt: new Date().toISOString(),
+          domains: {
+            kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
+            beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
+            luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
+          },
+          activeDomainCount: 0,
+          totalScore: 0,
+          status: 'cold',
+          isEnriched: false,
+          enrichedAt: null,
+          lemlistCampaignId: null,
+          lemlistPushedAt: null,
+          lastContactedAt: null,
+          notes: '',
+          engagementScore: 0,
+          keywordScore: 0,
+          crossSignalScore: 0,
+          enrichmentScore: 0,
+          diversityScore: 0,
+          previousScore: null,
+          scoreChangedAt: null,
+        });
+        existingUrls.add(profileUrl);
+        newContacts++;
+      } else {
+        updated++;
+      }
+
+      // Try to create a signal by matching postUrl to a watchlist org
+      const postUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']] : null;
+      if (postUrl) {
+        // Extract org name from postUrl: linkedin.com/posts/orgname_...
+        const postMatch = postUrl.match(/\/posts\/([^_]+)/i);
+        const postOrgSlug = postMatch?.[1]?.toLowerCase();
+
+        let matchedOrg = null;
+        if (postOrgSlug) {
+          matchedOrg = watchlistOrgs.find(o => {
+            const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
+            return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
+          });
+        }
+
+        if (matchedOrg) {
+          const action = colMap['action'] !== undefined ? row[colMap['action']]?.toLowerCase() : 'like';
+          const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
+          const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
+
+          addSignal({
+            id: `phantom-sig-${Date.now()}-${newSignals}`,
+            contactLinkedinUrl: profileUrl,
+            contactName: `${firstName} ${lastName}`,
+            contactTitle: headline,
+            orgId: matchedOrg.id,
+            orgName: matchedOrg.name,
+            domain: matchedOrg.domain,
+            tier: matchedOrg.tier,
+            engagementType: action === 'comment' ? 'comment' : 'like',
+            commentText,
+            detectedAt: timestamp || new Date().toISOString(),
+            postUrl,
+          });
+          newSignals++;
+        } else {
+          skippedSignals++;
+        }
+      } else {
+        skippedSignals++;
+      }
+    });
+
+    recomputeScores();
+
+    setPhantomResult({ newContacts, updated, newSignals, skippedSignals });
+
+    addImportRecord({
+      id: `imp-${Date.now()}`,
+      date: new Date().toISOString(),
+      type: 'Phantombuster',
+      records: phantomData.length,
+      imported: newContacts,
+      duplicates: updated,
+      errors: skippedSignals,
+      status: skippedSignals > 0 && newSignals === 0 ? 'error' : skippedSignals > 0 ? 'partial' : 'success',
+    });
+
+    toast.success(`Import voltooid: ${newContacts} nieuwe contacten, ${newSignals} signalen`);
   };
 
   return (
@@ -220,7 +337,6 @@ export default function ImportPage() {
 
           {csvData && (
             <>
-              {/* Preview */}
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Preview (eerste 5 rijen van {csvData.length})</p>
                 <div className="overflow-x-auto rounded border border-border">
@@ -241,7 +357,6 @@ export default function ImportPage() {
                 </div>
               </div>
 
-              {/* Column mapping */}
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Kolom-mapping</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -288,7 +403,7 @@ export default function ImportPage() {
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
+            <ActivityIcon className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Phantombuster Import</h3>
           </div>
 
@@ -300,7 +415,7 @@ export default function ImportPage() {
                 <Copy className="h-3 w-3" />
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground">Phantombuster stuurt signalen automatisch via n8n naar deze app. Configureer je n8n workflow om data naar bovenstaande webhook te sturen.</p>
+            <p className="text-[10px] text-muted-foreground">Phantombuster stuurt signalen automatisch via n8n naar deze app.</p>
           </div>
 
           <div className="border-t border-border pt-4">
@@ -320,7 +435,7 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {phantomData && phantomResult && (
+          {phantomData && (
             <div className="space-y-3">
               <div className="overflow-x-auto rounded border border-border">
                 <Table>
@@ -338,12 +453,17 @@ export default function ImportPage() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex gap-3 text-xs">
-                <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
-                <span className="text-blue-400">{phantomResult.updated} bestaande bijgewerkt</span>
-                <span className="text-primary">{phantomResult.newSignals} nieuwe signalen</span>
-              </div>
-              <Button size="sm">Importeer Phantombuster data</Button>
+              {phantomResult && (
+                <div className="flex gap-3 text-xs flex-wrap">
+                  <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
+                  <span className="text-blue-400">{phantomResult.updated} bestaande bijgewerkt</span>
+                  <span className="text-primary">{phantomResult.newSignals} nieuwe signalen</span>
+                  {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} overgeslagen (geen org match)</span>}
+                </div>
+              )}
+              {!phantomImporting && (
+                <Button size="sm" onClick={doPhantomImport}>Importeer Phantombuster data</Button>
+              )}
             </div>
           )}
         </CardContent>
@@ -353,47 +473,54 @@ export default function ImportPage() {
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Import geschiedenis</h3>
-          <div className="overflow-x-auto rounded border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Datum</TableHead>
-                  <TableHead className="text-xs">Type</TableHead>
-                  <TableHead className="text-xs">Records</TableHead>
-                  <TableHead className="text-xs">Geïmporteerd</TableHead>
-                  <TableHead className="text-xs">Duplicaten</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_HISTORY.map(h => (
-                  <TableRow key={h.id}>
-                    <TableCell className="text-xs">{relativeTime(h.date)}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-[10px]">{h.type}</Badge></TableCell>
-                    <TableCell className="text-xs">{h.records}</TableCell>
-                    <TableCell className="text-xs">{h.imported}</TableCell>
-                    <TableCell className="text-xs">{h.duplicates}</TableCell>
-                    <TableCell>
-                      <Badge className={`text-[10px] ${
-                        h.status === 'success' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                        h.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                        'bg-destructive/20 text-destructive border-destructive/30'
-                      }`}>
-                        {h.status === 'success' ? 'Succes' : h.status === 'partial' ? 'Gedeeltelijk' : 'Fout'}
-                      </Badge>
-                    </TableCell>
+          {importHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Inbox className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">Nog geen imports uitgevoerd.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Datum</TableHead>
+                    <TableHead className="text-xs">Type</TableHead>
+                    <TableHead className="text-xs">Records</TableHead>
+                    <TableHead className="text-xs">Geïmporteerd</TableHead>
+                    <TableHead className="text-xs">Duplicaten</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {importHistory.map(h => (
+                    <TableRow key={h.id}>
+                      <TableCell className="text-xs">{relativeTime(h.date)}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{h.type}</Badge></TableCell>
+                      <TableCell className="text-xs">{h.records}</TableCell>
+                      <TableCell className="text-xs">{h.imported}</TableCell>
+                      <TableCell className="text-xs">{h.duplicates}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-[10px] ${
+                          h.status === 'success' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                          h.status === 'partial' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                          'bg-destructive/20 text-destructive border-destructive/30'
+                        }`}>
+                          {h.status === 'success' ? 'Succes' : h.status === 'partial' ? 'Gedeeltelijk' : 'Fout'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
   );
 }
 
-function Activity(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
+function ActivityIcon(props: React.SVGProps<SVGSVGElement> & { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
