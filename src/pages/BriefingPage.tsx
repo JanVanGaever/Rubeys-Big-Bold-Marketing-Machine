@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import LemlistPushDialog from '@/components/LemlistPushDialog';
+import ScorePopover from '@/components/ScorePopover';
 import type { Contact } from '@/types';
 
 const fadeIn = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
@@ -152,10 +153,12 @@ export default function BriefingPage() {
                             <p className="text-xs text-muted-foreground">{c.title} — {c.company}</p>
                           </div>
                           <div className="text-right flex items-center gap-2">
-                            <div>
-                              <p className="text-xl font-bold text-foreground">{c.totalScore}</p>
-                              <p className="text-[10px] text-muted-foreground">{c.activeDomainCount} domeinen</p>
-                            </div>
+                            <ScorePopover contact={c}>
+                              <button className="text-right cursor-pointer hover:text-primary transition-colors">
+                                <p className="text-xl font-bold text-foreground">{c.totalScore}</p>
+                                <p className="text-[10px] text-muted-foreground">{c.activeDomainCount} domeinen</p>
+                              </button>
+                            </ScorePopover>
                             {delta !== null && delta !== 0 && (
                               <span className={`flex items-center text-xs font-medium ${delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
