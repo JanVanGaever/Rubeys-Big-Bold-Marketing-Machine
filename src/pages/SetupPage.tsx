@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, AlertTriangle, Circle, Eye, EyeOff, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
 import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { testWebhookConnection, testServiceViaWebhook } from '@/lib/api-service';
@@ -20,7 +20,25 @@ function relativeTime(iso: string | null) {
   return `${Math.floor(hrs / 24)}d geleden`;
 }
 
-function StatusIndicator({ status, message }: { status: ConnectionStatus; message: string }) {
+function StatusIndicator({ status, message, isService }: { status: ConnectionStatus; message: string; isService?: boolean }) {
+  // For services (apollo/hubspot/lemlist), use simplified labels
+  if (isService) {
+    const serviceMap: Record<ConnectionStatus, { icon: typeof CheckCircle2; cls: string; text: string }> = {
+      connected: { icon: CheckCircle2, cls: 'text-emerald-500', text: 'Beschikbaar' },
+      warning: { icon: AlertTriangle, cls: 'text-amber-500', text: message || 'Waarschuwing' },
+      error: { icon: AlertTriangle, cls: 'text-red-500', text: 'Niet beschikbaar' },
+      testing: { icon: Loader2, cls: 'text-muted-foreground animate-spin', text: 'Testen via n8n...' },
+      not_configured: { icon: Circle, cls: 'text-muted-foreground', text: message || 'Wacht op n8n' },
+    };
+    const m = serviceMap[status];
+    return (
+      <div className="flex items-center gap-1.5">
+        <m.icon className={`h-3.5 w-3.5 ${m.cls}`} />
+        <span className={`text-[10px] ${m.cls}`}>{m.text}</span>
+      </div>
+    );
+  }
+
   const map: Record<ConnectionStatus, { icon: typeof CheckCircle2; cls: string; text: string }> = {
     connected: { icon: CheckCircle2, cls: 'text-emerald-500', text: 'Verbonden' },
     warning: { icon: AlertTriangle, cls: 'text-amber-500', text: message || 'Waarschuwing' },
