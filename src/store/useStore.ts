@@ -44,12 +44,44 @@ interface AppState {
 
 const ENGAGEMENT_CAP = 30;
 
+function normalizeSettings(settings?: Partial<AppSettings> | null): AppSettings {
+  const input = settings ?? {};
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...input,
+    tierWeights: { ...DEFAULT_SETTINGS.tierWeights, ...(input.tierWeights ?? {}) },
+    domainConfig: {
+      kunst: { ...DEFAULT_SETTINGS.domainConfig.kunst, ...(input.domainConfig?.kunst ?? {}) },
+      beleggen: { ...DEFAULT_SETTINGS.domainConfig.beleggen, ...(input.domainConfig?.beleggen ?? {}) },
+      luxe: { ...DEFAULT_SETTINGS.domainConfig.luxe, ...(input.domainConfig?.luxe ?? {}) },
+    },
+    scoreWeights: { ...DEFAULT_SETTINGS.scoreWeights, ...(input.scoreWeights ?? {}) },
+    positiveKeywords: input.positiveKeywords ?? DEFAULT_SETTINGS.positiveKeywords,
+    negativeKeywords: input.negativeKeywords ?? DEFAULT_SETTINGS.negativeKeywords,
+    hubspotMapping: { ...DEFAULT_SETTINGS.hubspotMapping, ...(input.hubspotMapping ?? {}) },
+    lemlistConfig: { ...DEFAULT_SETTINGS.lemlistConfig, ...(input.lemlistConfig ?? {}) },
+    appearance: { ...DEFAULT_SETTINGS.appearance, ...(input.appearance ?? {}) },
+    notifications: { ...DEFAULT_SETTINGS.notifications, ...(input.notifications ?? {}) },
+    hubspotFieldMappings: input.hubspotFieldMappings ?? DEFAULT_SETTINGS.hubspotFieldMappings,
+    hubspotSyncRules: {
+      ...DEFAULT_SETTINGS.hubspotSyncRules,
+      ...(input.hubspotSyncRules ?? {}),
+      fields: {
+        ...DEFAULT_SETTINGS.hubspotSyncRules.fields,
+        ...(input.hubspotSyncRules?.fields ?? {}),
+      },
+    },
+  };
+}
+
 function recompute(
   contacts: Contact[],
   signals: Signal[],
   settings: AppSettings,
   watchlistOrgs: WatchlistOrg[]
 ): Contact[] {
+  const normalizedSettings = normalizeSettings(settings);
   const domainKeys: Domain[] = ['kunst', 'beleggen', 'luxe'];
   const orgMap = new Map(watchlistOrgs.map(o => [o.id, o]));
 
@@ -69,7 +101,7 @@ function recompute(
       const dp = domains[s.domain];
       dp.signalCount++;
       const org = orgMap.get(s.orgId);
-      const tierWeight = settings.tierWeights[s.tier] ?? 1;
+      const tierWeight = normalizedSettings.tierWeights[s.tier] ?? 1;
       const rank = org?.rank ?? 1;
       const orgScore = tierWeight / rank;
       dp.weightedScore += orgScore;
@@ -83,8 +115,8 @@ function recompute(
 
     const profileText = `${(c.title ?? '').toLowerCase()} ${(c.company ?? '').toLowerCase()}`;
     let keywordRaw = 0;
-    for (const kw of settings.positiveKeywords) { if (profileText.includes(kw.toLowerCase())) keywordRaw += 15; }
-    for (const kw of settings.negativeKeywords) { if (profileText.includes(kw.toLowerCase())) keywordRaw -= 25; }
+    for (const kw of normalizedSettings.positiveKeywords) { if (profileText.includes(kw.toLowerCase())) keywordRaw += 15; }
+    for (const kw of normalizedSettings.negativeKeywords) { if (profileText.includes(kw.toLowerCase())) keywordRaw -= 25; }
     const keywordScore = Math.max(0, Math.min(100, keywordRaw));
 
     const activeDomainCount = domainKeys.filter(d => domains[d].signalCount > 0).length;
@@ -99,14 +131,14 @@ function recompute(
     const orgCount = uniqueOrgs.size;
     const diversityScore = orgCount >= 5 ? 100 : orgCount * 20;
 
-    const w = settings.scoreWeights;
+    const w = normalizedSettings.scoreWeights;
     const totalScore = Math.round(
       (engagementScore * w.engagement + keywordScore * w.profileKeywords + crossSignalScore * w.crossSignal + enrichmentScore * w.enrichment + diversityScore * w.orgDiversity) / 100
     );
 
     let status: Contact['status'] = 'cold';
-    if (totalScore >= settings.hotScoreThreshold) status = 'hot';
-    else if (totalScore >= settings.warmThreshold) status = 'warm';
+    if (totalScore >= normalizedSettings.hotScoreThreshold) status = 'hot';
+    else if (totalScore >= normalizedSettings.warmThreshold) status = 'warm';
 
     const previousScore = c.totalScore !== 0 ? c.totalScore : c.previousScore;
     const scoreChanged = totalScore !== c.totalScore && c.totalScore !== 0;
@@ -132,7 +164,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   importHistory: [],
   enrichmentHistory: [],
   syncHistory: [],
-  settings: DEFAULT_SETTINGS,
+  settings: normalizeSettings(DEFAULT_SETTINGS),
   calibrationSuggestions: [],
 
   addWatchlistOrg: (org) => set(s => ({ watchlistOrgs: [...s.watchlistOrgs, org] })),
@@ -152,48 +184,64 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   updateContact: (id, updates) => set(s => ({ contacts: s.contacts.map(c => c.id === id ? { ...c, ...updates } : c) })),
 
   updateSettings: (updates) => set(s => {
-    const settings = { ...s.settings, ...updates };
+    const settings = normalizeSettings({ ...s.settings, ...updates });
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
   recomputeScores: () => set(s => ({ contacts: recompute(s.contacts, s.signals, s.settings, s.watchlistOrgs) })),
 
   addKeyword: (keyword, type) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
     const key = type === 'positive' ? 'positiveKeywords' : 'negativeKeywords';
     const kw = keyword.toLowerCase();
-    if (s.settings[key].includes(kw)) return s;
-    const settings = { ...s.settings, [key]: [...s.settings[key], kw] };
+    if (currentSettings[key].includes(kw)) return s;
+    const settings = normalizeSettings({ ...currentSettings, [key]: [...currentSettings[key], kw] });
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
   removeKeyword: (keyword, type) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
     const key = type === 'positive' ? 'positiveKeywords' : 'negativeKeywords';
-    const settings = { ...s.settings, [key]: s.settings[key].filter(k => k !== keyword) };
+    const settings = normalizeSettings({ ...currentSettings, [key]: currentSettings[key].filter(k => k !== keyword) });
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
-  updateHubSpotMapping: (mapping) => set(s => ({ settings: { ...s.settings, hubspotMapping: { ...s.settings.hubspotMapping, ...mapping } } })),
-  updateLemlistConfig: (config) => set(s => ({ settings: { ...s.settings, lemlistConfig: { ...s.settings.lemlistConfig, ...config } } })),
-  updateAppearance: (config) => set(s => ({ settings: { ...s.settings, appearance: { ...s.settings.appearance, ...config } } })),
-  updateNotifications: (config) => set(s => ({ settings: { ...s.settings, notifications: { ...s.settings.notifications, ...config } } })),
+  updateHubSpotMapping: (mapping) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
+    return { settings: normalizeSettings({ ...currentSettings, hubspotMapping: { ...currentSettings.hubspotMapping, ...mapping } }) };
+  }),
+  updateLemlistConfig: (config) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
+    return { settings: normalizeSettings({ ...currentSettings, lemlistConfig: { ...currentSettings.lemlistConfig, ...config } }) };
+  }),
+  updateAppearance: (config) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
+    return { settings: normalizeSettings({ ...currentSettings, appearance: { ...currentSettings.appearance, ...config } }) };
+  }),
+  updateNotifications: (config) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
+    return { settings: normalizeSettings({ ...currentSettings, notifications: { ...currentSettings.notifications, ...config } }) };
+  }),
 
   updateScoreWeights: (weights) => set(s => {
-    const settings = { ...s.settings, scoreWeights: { ...s.settings.scoreWeights, ...weights } };
+    const currentSettings = normalizeSettings(s.settings);
+    const settings = normalizeSettings({ ...currentSettings, scoreWeights: { ...currentSettings.scoreWeights, ...weights } });
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
   setThreshold: (type, value) => set(s => {
+    const currentSettings = normalizeSettings(s.settings);
     let settings: AppSettings;
     if (type === 'warm') {
-      settings = { ...s.settings, warmThreshold: value, hotScoreThreshold: Math.max(s.settings.hotScoreThreshold, value + 1) };
+      settings = normalizeSettings({ ...currentSettings, warmThreshold: value, hotScoreThreshold: Math.max(currentSettings.hotScoreThreshold, value + 1) });
     } else {
-      settings = { ...s.settings, hotScoreThreshold: value, warmThreshold: Math.min(s.settings.warmThreshold, value - 1) };
+      settings = normalizeSettings({ ...currentSettings, hotScoreThreshold: value, warmThreshold: Math.min(currentSettings.warmThreshold, value - 1) });
     }
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
   setDecayDays: (days) => set(s => {
-    const settings = { ...s.settings, decayDaysUntilCold: days };
+    const settings = normalizeSettings({ ...normalizeSettings(s.settings), decayDaysUntilCold: days });
     return { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) };
   }),
 
@@ -282,6 +330,15 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   })),
 }), {
   name: 'rubey-store',
+  merge: (persistedState, currentState) => {
+    const persisted = persistedState as Partial<AppState> | undefined;
+
+    return {
+      ...currentState,
+      ...persisted,
+      settings: normalizeSettings(persisted?.settings as Partial<AppSettings> | undefined),
+    };
+  },
   partialize: (state) => ({
     watchlistOrgs: state.watchlistOrgs,
     signals: state.signals,
