@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { useStore } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
