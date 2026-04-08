@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { normalizeLinkedInUrl } from "@/lib/normalize";
 
 const statusColors: Record<Contact["status"], string> = {
   hot: "bg-red-500",

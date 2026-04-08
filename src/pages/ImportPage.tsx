@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { normalizeLinkedInUrl } from '@/lib/normalize';
 
 const APP_FIELDS = [
   { key: 'linkedinUrl', label: 'LinkedIn URL', required: true },
