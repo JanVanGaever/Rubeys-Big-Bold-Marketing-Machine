@@ -187,7 +187,8 @@ function ScoringSection() {
 
 function KeywordsSection() {
   const { settings, addKeyword, removeKeyword } = useStore();
-  const { positiveKeywords, negativeKeywords } = settings;
+  const positiveKeywords = settings.positiveKeywords ?? [];
+  const negativeKeywords = settings.negativeKeywords ?? [];
   const [input, setInput] = useState('');
   const [type, setType] = useState<'positive' | 'negative'>('positive');
 
