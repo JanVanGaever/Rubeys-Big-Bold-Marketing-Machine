@@ -288,6 +288,8 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     contacts: state.contacts,
     campaigns: state.campaigns,
     importHistory: state.importHistory,
+    enrichmentHistory: state.enrichmentHistory,
+    syncHistory: state.syncHistory,
     settings: state.settings,
     calibrationSuggestions: state.calibrationSuggestions,
   }),
