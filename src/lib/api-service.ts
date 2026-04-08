@@ -98,6 +98,144 @@ export async function enrichContact(contact: { linkedinUrl: string; firstName: s
   });
 }
 
+// ── DROPCONTACT ──
+export interface DropcontactEnrichResult {
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  lastName?: string;
+  jobTitle?: string;
+  company?: string;
+  companyWebsite?: string;
+  companyLinkedin?: string;
+  civility?: string;
+  isVerified?: boolean;
+}
+
+export async function enrichViaDropcontact(contact: {
+  firstName: string;
+  lastName: string;
+  company?: string | null;
+  companyWebsite?: string | null;
+  email?: string | null;
+}): Promise<ApiResponse<DropcontactEnrichResult>> {
+  return callWebhook<DropcontactEnrichResult>('dropcontact', 'dropcontact-enrich', {
+    firstName: contact.firstName,
+    lastName: contact.lastName,
+    company: contact.company || undefined,
+    companyWebsite: contact.companyWebsite || undefined,
+    email: contact.email || undefined,
+  });
+}
+
+export async function enrichBatchViaDropcontact(contacts: Array<{
+  id: string;
+  firstName: string;
+  lastName: string;
+  company?: string | null;
+  companyWebsite?: string | null;
+  email?: string | null;
+}>): Promise<ApiResponse<Record<string, DropcontactEnrichResult>>> {
+  return callWebhook<Record<string, DropcontactEnrichResult>>('dropcontact', 'dropcontact-enrich-batch', {
+    contacts: contacts.map(c => ({
+      id: c.id,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      company: c.company || undefined,
+      companyWebsite: c.companyWebsite || undefined,
+      email: c.email || undefined,
+    })),
+  });
+}
+
+export function isDropcontactReady(): boolean {
+  return isConnectionReady('dropcontact');
+}
+
+// ── WATERFALL ENRICHMENT ──
+export interface WaterfallEnrichResult {
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  company: string | null;
+  source: 'apollo' | 'dropcontact' | 'both';
+  apolloResult: ApolloEnrichResult | null;
+  dropcontactResult: DropcontactEnrichResult | null;
+  emailVerified: boolean;
+}
+
+export async function waterfallEnrich(contact: {
+  linkedinUrl: string;
+  firstName: string;
+  lastName: string;
+  company?: string | null;
+}): Promise<ApiResponse<WaterfallEnrichResult>> {
+  const dropcontactReady = isDropcontactReady();
+
+  // Step 1: Apollo
+  const apolloResult = await enrichContact(contact);
+  let email: string | null = null;
+  let phone: string | null = null;
+  let title: string | null = null;
+  let company: string | null = null;
+  let source: 'apollo' | 'dropcontact' | 'both' = 'apollo';
+  let emailVerified = false;
+
+  if (apolloResult.success && apolloResult.data) {
+    const d = apolloResult.data;
+    email = d.personalEmail || d.workEmail || d.email || null;
+    phone = d.phone || null;
+    title = d.title || null;
+    company = d.company || null;
+  }
+
+  // Step 2: Dropcontact (if available)
+  let dropcontactData: DropcontactEnrichResult | null = null;
+  if (dropcontactReady) {
+    try {
+      const dcResult = await enrichViaDropcontact({
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        company: contact.company,
+        email: email,
+      });
+
+      if (dcResult.success && dcResult.data) {
+        dropcontactData = dcResult.data;
+
+        if (!email && dcResult.data.email) {
+          email = dcResult.data.email;
+          source = 'dropcontact';
+        } else if (email && dcResult.data.email) {
+          source = 'both';
+          emailVerified = dcResult.data.isVerified ?? true;
+        } else if (email) {
+          source = 'apollo';
+        }
+
+        if (!title && dcResult.data.jobTitle) title = dcResult.data.jobTitle;
+        if (!company && dcResult.data.company) company = dcResult.data.company;
+      }
+    } catch {
+      // Graceful degradation: Dropcontact failed, use Apollo result
+    }
+  }
+
+  return {
+    success: true,
+    data: {
+      email,
+      phone,
+      title,
+      company,
+      source,
+      apolloResult: apolloResult.data ?? null,
+      dropcontactResult: dropcontactData,
+      emailVerified,
+    },
+  };
+}
+
 export async function enrichBatch(contacts: Array<{ id: string; linkedinUrl: string; firstName: string; lastName: string; company?: string | null }>): Promise<ApiResponse<Record<string, ApolloEnrichResult>>> {
   return callWebhook<Record<string, ApolloEnrichResult>>('apollo', 'apollo-enrich-batch', {
     contacts: contacts.map(c => ({
