@@ -630,6 +630,9 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       scoreChangedAt: null,
       isCustomer: false,
       customerSince: null,
+      enrichmentSource: 'none',
+      emailVerifiedByDropcontact: false,
+      dropcontactEnrichedAt: null,
     };
     addContact(newContact);
     setForm({
