@@ -2,7 +2,7 @@ import type { WatchlistOrg, Signal, Contact, Tier, LemlistCampaign, AppSettings,
 import { TIER_WEIGHT, DEFAULT_DOMAINS } from '@/types';
 
 function daysAgo(n: number) {
-  const d = new Date('2026-04-07T12:00:00Z');
+  const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString();
 }
@@ -298,7 +298,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   hotScoreThreshold: 70,
   tierWeights: { kern: 3, extended: 2, peripheral: 1 },
   manualAddWeight: 3,
-  recencyDecay: false,
+  recencyDecay: true,
   recencyDecayFactor: 0.9,
   domains: [...DEFAULT_DOMAINS],
   profileName: 'Rubey',
