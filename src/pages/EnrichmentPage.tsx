@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ConnectionAlert from '@/components/ConnectionAlert';
 import { useStore } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,8 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, CheckCircle, XCircle, Mail, Phone, Building2, Zap } from 'lucide-react';
+import { Database, CheckCircle, XCircle, Mail, Phone, Zap, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { enrichContact, enrichBatch, isConnectionReady } from '@/lib/api-service';
+import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
   hot: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -29,27 +31,20 @@ function relativeTime(iso: string | null) {
   return `${days} dagen geleden`;
 }
 
-// Mock weekly enrichment data
-const WEEKLY_DATA = [
-  { week: 'W9', count: 3 }, { week: 'W10', count: 7 }, { week: 'W11', count: 5 },
-  { week: 'W12', count: 12 }, { week: 'W13', count: 8 }, { week: 'W14', count: 15 },
-  { week: 'W15', count: 11 }, { week: 'W16', count: 9 },
-];
-
 export default function EnrichmentPage() {
-  const { contacts, settings } = useStore();
+  const { contacts, settings, updateContact, recomputeScores, enrichmentHistory, addEnrichmentRecord, updateSettings } = useStore();
   const domainConfig = settings.domainConfig;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [autoEnrich, setAutoEnrich] = useState(true);
   const [enrichFilter, setEnrichFilter] = useState<'all' | 'email' | 'phone' | 'incomplete'>('all');
   const [enrichFields, setEnrichFields] = useState({ email: true, phone: true, companySize: true, industry: true, website: false });
+  const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
+  const ready = isConnectionReady('apollo');
 
-  // Queue: warm/hot, not enriched
   const queue = contacts.filter(c => (c.status === 'warm' || c.status === 'hot') && !c.isEnriched)
     .sort((a, b) => b.totalScore - a.totalScore);
 
-  // Enriched contacts
   const enrichedAll = contacts.filter(c => c.isEnriched);
   const enriched = enrichedAll.filter(c => {
     if (enrichFilter === 'email') return !!c.email;
@@ -58,25 +53,87 @@ export default function EnrichmentPage() {
     return true;
   });
 
-  // Stats
   const totalEnriched = enrichedAll.length;
   const emailHitRate = totalEnriched > 0 ? Math.round((enrichedAll.filter(c => c.email).length / totalEnriched) * 100) : 0;
   const phoneHitRate = totalEnriched > 0 ? Math.round((enrichedAll.filter(c => c.phone).length / totalEnriched) * 100) : 0;
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
-
   const selectAll = () => {
     if (selectedIds.size === queue.length) setSelectedIds(new Set());
     else setSelectedIds(new Set(queue.map(c => c.id)));
   };
 
-  const maxBar = Math.max(...WEEKLY_DATA.map(d => d.count));
+  const handleEnrichSingle = async (contactId: string) => {
+    const c = contacts.find(ct => ct.id === contactId);
+    if (!c) return;
+    if (!ready) { toast.error('Apollo of n8n niet geconfigureerd'); return; }
+
+    setEnrichingIds(prev => new Set(prev).add(contactId));
+    const result = await enrichContact({ linkedinUrl: c.linkedinUrl, firstName: c.firstName, lastName: c.lastName, company: c.company });
+    setEnrichingIds(prev => { const n = new Set(prev); n.delete(contactId); return n; });
+
+    if (result.success && result.data) {
+      const d = result.data;
+      const fieldsFound: string[] = [];
+      const fieldsMissing: string[] = [];
+      const email = d.personalEmail || d.workEmail || d.email || null;
+      if (email) fieldsFound.push('email'); else fieldsMissing.push('email');
+      if (d.phone) fieldsFound.push('phone'); else fieldsMissing.push('phone');
+      updateContact(contactId, { email: email || c.email, phone: d.phone || c.phone, title: c.title || d.title || null, company: c.company || d.company || null, isEnriched: true, enrichedAt: new Date().toISOString() });
+      addEnrichmentRecord({ id: `enr-${Date.now()}`, contactId, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: fieldsMissing.length > 0 ? 'partial' : 'success', fieldsFound, fieldsMissing });
+      recomputeScores();
+      toast.success(`${c.firstName} ${c.lastName} verrijkt: ${fieldsFound.join(' + ') || 'geen nieuwe data'}`);
+    } else {
+      addEnrichmentRecord({ id: `enr-${Date.now()}`, contactId, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: 'error', fieldsFound: [], fieldsMissing: ['email', 'phone'] });
+      toast.error(result.error || 'Verrijking mislukt');
+    }
+  };
+
+  const handleEnrichBatch = async (ids: string[]) => {
+    const targets = contacts.filter(c => ids.includes(c.id));
+    if (!ready) { toast.error('Apollo of n8n niet geconfigureerd'); return; }
+
+    setBatchProgress({ done: 0, total: targets.length });
+    const result = await enrichBatch(targets.map(c => ({ id: c.id, linkedinUrl: c.linkedinUrl, firstName: c.firstName, lastName: c.lastName, company: c.company })));
+    setBatchProgress(null);
+
+    if (result.success && result.data) {
+      let emailsFound = 0; let errors = 0;
+      for (const c of targets) {
+        const d = result.data[c.id];
+        if (d) {
+          const email = d.personalEmail || d.workEmail || d.email || null;
+          if (email) emailsFound++;
+          updateContact(c.id, { email: email || c.email, phone: d.phone || c.phone, title: c.title || d.title || null, company: c.company || d.company || null, isEnriched: true, enrichedAt: new Date().toISOString() });
+          addEnrichmentRecord({ id: `enr-${Date.now()}-${c.id}`, contactId: c.id, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: 'success', fieldsFound: email ? ['email'] : [], fieldsMissing: email ? [] : ['email'] });
+        } else {
+          errors++;
+        }
+      }
+      recomputeScores();
+      toast.success(`${targets.length} contacten verrijkt, ${emailsFound} emails gevonden${errors > 0 ? `, ${errors} fouten` : ''}`);
+    } else {
+      toast.error(result.error || 'Batch verrijking mislukt');
+    }
+    setSelectedIds(new Set());
+  };
+
+  // Weekly chart from enrichmentHistory
+  const weeklyData = useMemo(() => {
+    const weeks: Record<string, number> = {};
+    for (const r of enrichmentHistory) {
+      const d = new Date(r.date);
+      const weekNum = Math.ceil((d.getDate()) / 7);
+      const key = `W${weekNum}`;
+      weeks[key] = (weeks[key] || 0) + 1;
+    }
+    const entries = Object.entries(weeks).slice(-8);
+    return entries.length > 0 ? entries.map(([week, count]) => ({ week, count })) : null;
+  }, [enrichmentHistory]);
+
+  const maxBar = weeklyData ? Math.max(...weeklyData.map(d => d.count)) : 1;
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
@@ -86,13 +143,12 @@ export default function EnrichmentPage() {
       </div>
       <ConnectionAlert connectionId="apollo" featureName="Enrichment" />
 
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Totaal verrijkt', value: totalEnriched.toString(), icon: Database },
           { label: 'Email hit rate', value: `${emailHitRate}%`, icon: Mail },
           { label: 'Telefoon hit rate', value: `${phoneHitRate}%`, icon: Phone },
-          { label: 'Credits deze maand', value: '847 / 10.000', icon: Zap },
+          { label: 'Enrichment records', value: enrichmentHistory.length.toString(), icon: Zap },
         ].map(s => (
           <Card key={s.label} className="bg-card border-border">
             <CardContent className="p-4">
@@ -110,17 +166,30 @@ export default function EnrichmentPage() {
       <Card className="bg-card border-border">
         <CardContent className="p-5">
           <h3 className="text-sm font-semibold text-foreground mb-3">Verrijkingen per week</h3>
-          <div className="flex items-end gap-3 h-32">
-            {WEEKLY_DATA.map(d => (
-              <div key={d.week} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{d.count}</span>
-                <div className="w-full rounded-t bg-primary/70" style={{ height: `${(d.count / maxBar) * 100}%` }} />
-                <span className="text-[10px] text-muted-foreground">{d.week}</span>
-              </div>
-            ))}
-          </div>
+          {weeklyData ? (
+            <div className="flex items-end gap-3 h-32">
+              {weeklyData.map(d => (
+                <div key={d.week} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground">{d.count}</span>
+                  <div className="w-full rounded-t bg-primary/70" style={{ height: `${(d.count / maxBar) * 100}%` }} />
+                  <span className="text-[10px] text-muted-foreground">{d.week}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-8">Nog geen enrichment data</p>
+          )}
         </CardContent>
       </Card>
+
+      {batchProgress && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-foreground">Verrijking bezig... {batchProgress.done}/{batchProgress.total} voltooid</span>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="queue">
         <TabsList className="bg-muted">
@@ -135,9 +204,13 @@ export default function EnrichmentPage() {
               {selectedIds.size === queue.length ? 'Deselecteer alles' : 'Selecteer alles'}
             </Button>
             {selectedIds.size > 0 && (
-              <Button size="sm">Verrijk {selectedIds.size} geselecteerden</Button>
+              <Button size="sm" disabled={!ready} onClick={() => handleEnrichBatch(Array.from(selectedIds))}>
+                Verrijk {selectedIds.size} geselecteerden
+              </Button>
             )}
-            <Button size="sm" variant="secondary">Verrijk alle warm + hot</Button>
+            <Button size="sm" variant="secondary" disabled={!ready || queue.length === 0} onClick={() => handleEnrichBatch(queue.map(c => c.id))}>
+              Verrijk alle warm + hot
+            </Button>
           </div>
 
           {queue.length === 0 ? (
@@ -169,7 +242,11 @@ export default function EnrichmentPage() {
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell><Button size="sm" variant="outline" className="h-6 text-[10px]">Verrijk</Button></TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px]" disabled={!ready || enrichingIds.has(c.id)} onClick={() => handleEnrichSingle(c.id)}>
+                          {enrichingIds.has(c.id) ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Verrijk'}
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -220,23 +297,17 @@ export default function EnrichmentPage() {
                   <Label className="text-xs">Auto-enrich</Label>
                   <p className="text-[10px] text-muted-foreground">Automatisch verrijken wanneer een contact warm of hot wordt</p>
                 </div>
-                <Switch checked={autoEnrich} onCheckedChange={setAutoEnrich} />
+                <Switch checked={settings.autoEnrichEnabled} onCheckedChange={(v) => updateSettings({ autoEnrichEnabled: v })} />
               </div>
 
               <div className="flex items-center justify-between">
                 <div>
                   <Label className="text-xs">Apollo API status</Label>
-                  <p className="text-[10px] text-muted-foreground">Verbinding met Apollo.io</p>
+                  <p className="text-[10px] text-muted-foreground">Verbinding met Apollo.io via n8n</p>
                 </div>
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Connected</Badge>
-              </div>
-
-              <div>
-                <Label className="text-xs">Credits resterend</Label>
-                <p className="text-sm font-medium text-foreground">9.153 / 10.000</p>
-                <div className="w-full h-1.5 bg-muted rounded-full mt-1">
-                  <div className="h-full bg-primary rounded-full" style={{ width: '91.5%' }} />
-                </div>
+                <Badge className={ready ? "bg-green-500/20 text-green-400 border-green-500/30 text-[10px]" : "bg-muted text-muted-foreground border-border text-[10px]"}>
+                  {ready ? 'Connected' : 'Niet verbonden'}
+                </Badge>
               </div>
 
               <div>

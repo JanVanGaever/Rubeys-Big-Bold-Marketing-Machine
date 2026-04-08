@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, ImportRecord, CalibrationSuggestion } from '@/types';
+import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, ImportRecord, CalibrationSuggestion, EnrichmentRecord, SyncRecord, LemlistCampaign } from '@/types';
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from '@/lib/seed-data';
-import type { LemlistCampaign } from '@/types';
 
 interface AppState {
   watchlistOrgs: WatchlistOrg[];
@@ -10,6 +9,8 @@ interface AppState {
   contacts: Contact[];
   campaigns: LemlistCampaign[];
   importHistory: ImportRecord[];
+  enrichmentHistory: EnrichmentRecord[];
+  syncHistory: SyncRecord[];
   settings: AppSettings;
   calibrationSuggestions: CalibrationSuggestion[];
 
@@ -33,6 +34,8 @@ interface AppState {
   setDecayDays: (days: number) => void;
   updateOrgRank: (id: string, newRank: number) => void;
   addImportRecord: (record: ImportRecord) => void;
+  addEnrichmentRecord: (record: EnrichmentRecord) => void;
+  addSyncRecord: (record: SyncRecord) => void;
   addCalibrationSuggestion: (suggestion: CalibrationSuggestion) => void;
   acceptSuggestion: (id: string) => void;
   rejectSuggestion: (id: string) => void;
@@ -127,6 +130,8 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   contacts: seedContacts,
   campaigns: SEED_CAMPAIGNS,
   importHistory: [],
+  enrichmentHistory: [],
+  syncHistory: [],
   settings: DEFAULT_SETTINGS,
   calibrationSuggestions: [],
 
@@ -208,6 +213,8 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   }),
 
   addImportRecord: (record) => set(s => ({ importHistory: [record, ...s.importHistory] })),
+  addEnrichmentRecord: (record) => set(s => ({ enrichmentHistory: [record, ...s.enrichmentHistory] })),
+  addSyncRecord: (record) => set(s => ({ syncHistory: [record, ...s.syncHistory] })),
 
   addCalibrationSuggestion: (suggestion) => set(s => ({ calibrationSuggestions: [...s.calibrationSuggestions, suggestion] })),
 
@@ -281,6 +288,8 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     contacts: state.contacts,
     campaigns: state.campaigns,
     importHistory: state.importHistory,
+    enrichmentHistory: state.enrichmentHistory,
+    syncHistory: state.syncHistory,
     settings: state.settings,
     calibrationSuggestions: state.calibrationSuggestions,
   }),

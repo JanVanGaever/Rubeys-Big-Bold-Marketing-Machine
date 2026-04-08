@@ -117,6 +117,41 @@ export interface AppSettings {
     connectionDown: boolean;
     dailyDigest: boolean;
   };
+  autoEnrichEnabled: boolean;
+  hubspotFieldMappings: Array<{ lc: string; hs: string }>;
+  hubspotSyncRules: {
+    who: 'hot' | 'warm_hot' | 'all' | 'manual';
+    when: 'auto' | 'daily' | 'manual';
+    fields: {
+      nameContact: boolean;
+      scoreStatus: boolean;
+      domainTags: boolean;
+      signalHistory: boolean;
+      enrichmentData: boolean;
+      notes: boolean;
+    };
+  };
+}
+
+export interface EnrichmentRecord {
+  id: string;
+  contactId: string;
+  contactName: string;
+  date: string;
+  status: 'success' | 'error' | 'partial';
+  fieldsFound: string[];
+  fieldsMissing: string[];
+}
+
+export interface SyncRecord {
+  id: string;
+  date: string;
+  direction: 'push' | 'pull';
+  records: number;
+  created: number;
+  updated: number;
+  errors: number;
+  status: 'success' | 'partial' | 'error';
 }
 
 export interface ImportRecord {

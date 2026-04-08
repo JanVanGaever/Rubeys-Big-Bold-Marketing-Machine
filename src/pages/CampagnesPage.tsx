@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import ConnectionAlert from '@/components/ConnectionAlert';
-import { Send, Play, Pause, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Send, Play, Pause, CheckCircle2, RefreshCw, Loader2 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import type { Contact } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ALL_DOMAINS } from '@/types';
+import { isConnectionReady, fetchLemlistCampaigns } from '@/lib/api-service';
+import LemlistPushDialog from '@/components/LemlistPushDialog';
+import { toast } from 'sonner';
 
 const statusIcons = { active: Play, paused: Pause, completed: CheckCircle2 };
 const statusLabels = { active: 'Actief', paused: 'Gepauzeerd', completed: 'Voltooid' };
@@ -14,11 +17,38 @@ const statusColors = { active: 'text-green-400', paused: 'text-amber-400', compl
 
 export default function CampagnesPage() {
   const { campaigns, contacts, settings } = useStore();
+  const ready = isConnectionReady('lemlist');
+
+  const [pushDialogOpen, setPushDialogOpen] = useState(false);
+  const [pushContacts, setPushContacts] = useState<Contact[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   const pushQueue = useMemo(() =>
     contacts.filter(c => c.status === 'hot' && !c.lemlistCampaignId).sort((a, b) => b.totalScore - a.totalScore),
     [contacts]
   );
+
+  const handlePushSingle = (contact: Contact) => {
+    setPushContacts([contact]);
+    setPushDialogOpen(true);
+  };
+
+  const handlePushAll = () => {
+    setPushContacts(pushQueue);
+    setPushDialogOpen(true);
+  };
+
+  const handleRefresh = async () => {
+    if (!ready) { toast.error('Lemlist of n8n niet geconfigureerd'); return; }
+    setRefreshing(true);
+    const result = await fetchLemlistCampaigns();
+    setRefreshing(false);
+    if (result.success) {
+      toast.success('Campagne data vernieuwd');
+    } else {
+      toast.error(result.error || 'Campagnes ophalen mislukt');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -27,6 +57,14 @@ export default function CampagnesPage() {
         <p className="text-xs text-muted-foreground">Lemlist campagnes en push queue</p>
       </div>
       <ConnectionAlert connectionId="lemlist" featureName="Campagnes" />
+
+      {!ready && (
+        <Card className="bg-amber-500/5 border-amber-500/20">
+          <CardContent className="p-4 text-xs text-amber-400">
+            Toont demo-data. Configureer Lemlist in Setup voor echte campagnes.
+          </CardContent>
+        </Card>
+      )}
 
       {/* Campaign cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -43,7 +81,12 @@ export default function CampagnesPage() {
                     <Icon className={`h-4 w-4 ${statusColors[camp.status]}`} />
                     <h3 className="text-sm font-semibold text-foreground">{camp.name}</h3>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">{statusLabels[camp.status]}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">{statusLabels[camp.status]}</Badge>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleRefresh} disabled={refreshing}>
+                      {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-4 gap-3 text-center text-xs">
@@ -90,7 +133,14 @@ export default function CampagnesPage() {
 
       {/* Push queue */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-foreground">Push queue — Hot leads zonder campagne</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Push queue — Hot leads zonder campagne</h2>
+          {pushQueue.length > 0 && (
+            <Button size="sm" onClick={handlePushAll} disabled={!ready} className="text-xs gap-1">
+              <Send className="h-3 w-3" /> Push alle hot leads
+            </Button>
+          )}
+        </div>
         {pushQueue.length === 0 ? (
           <p className="text-xs text-muted-foreground">Alle hot leads zijn al gepusht naar een campagne.</p>
         ) : (
@@ -102,6 +152,7 @@ export default function CampagnesPage() {
                     <th className="text-left p-3 font-medium">Naam</th>
                     <th className="text-left p-3 font-medium">Bedrijf</th>
                     <th className="text-center p-3 font-medium">Score</th>
+                    <th className="text-center p-3 font-medium">Email</th>
                     <th className="text-center p-3 font-medium">Domeinen</th>
                     <th className="text-right p-3 font-medium"></th>
                   </tr>
@@ -112,6 +163,9 @@ export default function CampagnesPage() {
                       <td className="p-3 font-medium text-foreground">{c.firstName} {c.lastName}</td>
                       <td className="p-3 text-muted-foreground">{c.company}</td>
                       <td className="p-3 text-center font-semibold text-foreground">{c.totalScore}</td>
+                      <td className="p-3 text-center">
+                        {c.email ? <CheckCircle2 className="h-3.5 w-3.5 text-green-400 mx-auto" /> : <span className="text-muted-foreground/40">—</span>}
+                      </td>
                       <td className="p-3">
                         <div className="flex justify-center gap-1">
                           {ALL_DOMAINS.map(d => (
@@ -123,7 +177,7 @@ export default function CampagnesPage() {
                         </div>
                       </td>
                       <td className="p-3 text-right">
-                        <Button size="sm" variant="outline" className="text-xs h-7 gap-1">
+                        <Button size="sm" variant="outline" className="text-xs h-7 gap-1" disabled={!ready} onClick={() => handlePushSingle(c)}>
                           <Send className="h-3 w-3" />Push naar campagne
                         </Button>
                       </td>
@@ -135,6 +189,8 @@ export default function CampagnesPage() {
           </Card>
         )}
       </section>
+
+      <LemlistPushDialog contacts={pushContacts} open={pushDialogOpen} onOpenChange={setPushDialogOpen} />
     </div>
   );
 }

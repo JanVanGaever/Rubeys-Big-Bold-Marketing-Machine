@@ -344,4 +344,19 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lemlistConfig: { dailySendLimit: 50, defaultCampaignId: '' },
   appearance: { theme: 'dark', compactMode: false, accentColor: 'coral' },
   notifications: { newHotLead: true, enrichmentFailed: true, connectionDown: true, dailyDigest: false },
+  autoEnrichEnabled: false,
+  hubspotFieldMappings: [
+    { lc: 'firstName', hs: 'firstname' },
+    { lc: 'lastName', hs: 'lastname' },
+    { lc: 'email', hs: 'email' },
+    { lc: 'phone', hs: 'phone' },
+    { lc: 'totalScore', hs: 'lead_score' },
+    { lc: 'status', hs: 'lead_status' },
+    { lc: 'activeDomainCount', hs: 'domain_count' },
+  ],
+  hubspotSyncRules: {
+    who: 'warm_hot',
+    when: 'auto',
+    fields: { nameContact: true, scoreStatus: true, domainTags: true, signalHistory: false, enrichmentData: true, notes: false },
+  },
 };
