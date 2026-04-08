@@ -23,6 +23,10 @@ import {
 import { useStore } from "@/store/useStore";
 import DomainsSection from "@/components/DomainsSection";
 import { useConnectionStore } from "@/stores/connectionStore";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 /* ─── Toggle Switch ─── */
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
