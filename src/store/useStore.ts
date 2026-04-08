@@ -137,6 +137,10 @@ function recompute(
     let rawEngagement = 0;
     const uniqueOrgs = new Set<string>();
 
+    const now = Date.now();
+    const decayEnabled = normalizedSettings.recencyDecay;
+    const decayDays = normalizedSettings.decayDaysUntilCold;
+
     for (const s of contactSignals) {
       if (!domains[s.domain]) {
         domains[s.domain] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
@@ -150,7 +154,15 @@ function recompute(
       dp.weightedScore += orgScore;
       if (!dp.lastSignalAt || s.detectedAt > dp.lastSignalAt) dp.lastSignalAt = s.detectedAt;
       const multiplier = s.engagementType === "comment" ? 3 : 1;
-      rawEngagement += orgScore * multiplier;
+
+      let decayFactor = 1;
+      if (decayEnabled && decayDays > 0) {
+        const ageMs = now - new Date(s.detectedAt).getTime();
+        const ageDays = ageMs / (1000 * 60 * 60 * 24);
+        decayFactor = Math.max(0, 1 - ageDays / decayDays);
+      }
+
+      rawEngagement += orgScore * multiplier * decayFactor;
       uniqueOrgs.add(s.orgId);
     }
 
