@@ -77,6 +77,14 @@ export default function ContactsPage() {
         <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1 text-xs"><Plus className="h-3.5 w-3.5" />Prospect toevoegen</Button>
       </div>
 
+      {contacts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[40vh]">
+          <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground mb-4">Nog geen contacten. Importeer je eerste leads via de Import pagina.</p>
+          <Button onClick={() => navigate('/import')} className="gap-2"><Upload className="h-4 w-4" />Ga naar Import</Button>
+        </div>
+      ) : (
+      <>
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
