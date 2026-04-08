@@ -27,9 +27,27 @@ interface ConnectionStore {
 
 const DEFAULT_CONNECTIONS: Connection[] = [
   {
+    id: 'n8n',
+    name: 'n8n Webhooks',
+    description: 'Automatisering workflows verbinden',
+    status: 'not_configured',
+    statusMessage: '',
+    lastChecked: null,
+    config: {},
+  },
+  {
     id: 'chrome-extension',
     name: 'Chrome extensie',
     description: 'LinkedIn signalen verzamelen via de browser extensie',
+    status: 'not_configured',
+    statusMessage: '',
+    lastChecked: null,
+    config: {},
+  },
+  {
+    id: 'phantombuster',
+    name: 'Phantombuster',
+    description: 'LinkedIn signalen verzamelen (post likers & commenters)',
     status: 'not_configured',
     statusMessage: '',
     lastChecked: null,
@@ -71,16 +89,16 @@ const DEFAULT_CONNECTIONS: Connection[] = [
     lastChecked: null,
     config: {},
   },
-  {
-    id: 'n8n',
-    name: 'n8n Webhooks',
-    description: 'Automatisering workflows verbinden',
-    status: 'not_configured',
-    statusMessage: '',
-    lastChecked: null,
-    config: {},
-  },
 ];
+
+// Ensure persisted connections have all expected IDs in correct order
+function normalizeConnections(persisted: Connection[]): Connection[] {
+  const map = new Map(persisted.map(c => [c.id, c]));
+  return DEFAULT_CONNECTIONS.map(def => {
+    const existing = map.get(def.id);
+    return existing ? { ...def, ...existing } : def;
+  });
+}
 
 export const useConnectionStore = create<ConnectionStore>()(
   persist(
@@ -128,7 +146,23 @@ export const useConnectionStore = create<ConnectionStore>()(
           return;
         }
 
-        // Apollo, HubSpot, Lemlist: check n8n status
+        if (id === 'phantombuster') {
+          const n8nConn = get().connections.find(c => c.id === 'n8n');
+          if (!n8nConn || n8nConn.status !== 'connected') {
+            setConnectionStatus(id, 'error', 'Configureer eerst n8n');
+            return;
+          }
+          const updatedConn = get().connections.find(c => c.id === 'phantombuster')!;
+          const phantomId = updatedConn.config.phantomId;
+          if (phantomId && phantomId.trim()) {
+            setConnectionStatus(id, 'connected', 'Phantom geconfigureerd via n8n');
+          } else {
+            setConnectionStatus(id, 'warning', 'Manuele CSV import beschikbaar, automatische import niet geconfigureerd');
+          }
+          return;
+        }
+
+        // Apollo, HubSpot, Lemlist, Dropcontact: check n8n status
         const n8n = get().connections.find((c) => c.id === 'n8n');
         if (!n8n || n8n.status !== 'connected') {
           setConnectionStatus(id, 'not_configured', 'Wacht op n8n');
@@ -150,6 +184,11 @@ export const useConnectionStore = create<ConnectionStore>()(
         connections: state.connections,
         setupCompleted: state.setupCompleted,
         currentSetupStep: state.currentSetupStep,
+      }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        ...(persisted || {}),
+        connections: normalizeConnections((persisted as any)?.connections || DEFAULT_CONNECTIONS),
       }),
     }
   )
