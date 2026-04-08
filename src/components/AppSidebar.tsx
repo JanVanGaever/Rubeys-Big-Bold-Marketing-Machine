@@ -84,7 +84,22 @@ export default function AppSidebar() {
         </NavLink>
       </nav>
 
-      <div className="px-4 py-3 border-t border-sidebar-border">
+      <div
+        onClick={() => window.location.href = '/settings/setup'}
+        className="px-4 py-2 border-t border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-colors"
+      >
+        <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+          {connections.map(c => (
+            <div key={c.id} className="flex items-center gap-1.5">
+              {c.status === 'connected' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+              {c.status === 'warning' && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+              {c.status === 'error' && <AlertTriangle className="h-3 w-3 text-red-500" />}
+              {c.status === 'not_configured' && <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />}
+              {c.status === 'testing' && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
+              <span className="text-[10px] text-muted-foreground">{c.name.length > 10 ? c.name.slice(0, 10) + '…' : c.name}</span>
+            </div>
+          ))}
+        </div>
         <p className="text-[10px] text-muted-foreground">v2.0 — Lead Catalyst</p>
       </div>
     </aside>
