@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Heart, MessageCircle, Activity, Users, Zap, Radio } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { ALL_DOMAINS, DOMAIN_META } from '@/types';
+import { getDomainName, getDomainColor } from '@/types';
 import type { Tier } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', p
 
 export default function SignalsPage() {
   const { signals, contacts, settings } = useStore();
+  const domainDefs = settings.domains ?? [];
   const [domainFilter, setDomainFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [tierFilter, setTierFilter] = useState<string>('all');
@@ -62,7 +63,7 @@ export default function SignalsPage() {
           <SelectTrigger className="w-40 h-8 text-xs"><SelectValue placeholder="Domein" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle domeinen</SelectItem>
-            {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{DOMAIN_META[d].name}</SelectItem>)}
+            {domainDefs.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -94,11 +95,12 @@ export default function SignalsPage() {
         {filtered.map(s => {
           const contact = contacts.find(c => c.linkedinUrl === s.contactLinkedinUrl);
           const isCross = contact && contact.activeDomainCount >= 2;
-          const meta = settings.domainConfig[s.domain];
+          const color = getDomainColor(domainDefs, s.domain);
+          const name = getDomainName(domainDefs, s.domain);
           return (
             <motion.div key={s.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
               className={`flex items-start gap-3 p-3 rounded border transition-colors ${isCross ? 'border-l-2 bg-muted/20' : 'border-transparent'}`}
-              style={isCross ? { borderLeftColor: meta.color } : undefined}>
+              style={isCross ? { borderLeftColor: color } : undefined}>
               <div className="text-[10px] text-muted-foreground w-20 shrink-0 pt-0.5">
                 {formatDistanceToNow(new Date(s.detectedAt), { addSuffix: false, locale: nl })}
               </div>
@@ -109,9 +111,9 @@ export default function SignalsPage() {
                   <span className="font-medium">{s.orgName}</span>
                 </p>
                 {s.commentText && <p className="text-muted-foreground truncate mt-0.5">"{s.commentText}"</p>}
-                {isCross && <p className="text-[10px] mt-1 font-medium" style={{ color: meta.color }}>✨ Cross-signaal! Nu actief in {contact.activeDomainCount} domeinen</p>}
+                {isCross && <p className="text-[10px] mt-1 font-medium" style={{ color }}>✨ Cross-signaal! Nu actief in {contact.activeDomainCount} domeinen</p>}
               </div>
-              <Badge variant="outline" className="text-[10px] shrink-0" style={{ borderColor: meta.color, color: meta.color }}>{meta.name.split(' ')[0]}</Badge>
+              <Badge variant="outline" className="text-[10px] shrink-0" style={{ borderColor: color, color }}>{name.split(' ')[0]}</Badge>
               <Badge variant="outline" className="text-[10px] text-muted-foreground shrink-0">{tierLabels[s.tier]}</Badge>
             </motion.div>
           );

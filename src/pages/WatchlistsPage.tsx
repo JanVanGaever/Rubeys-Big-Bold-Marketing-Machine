@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import type { WatchlistOrg, Domain, Tier } from '@/types';
-import { ALL_DOMAINS } from '@/types';
+import type { WatchlistOrg, Tier } from '@/types';
+import { getDomainColor, getDomainName } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,16 +19,16 @@ const tierColors: Record<Tier, string> = { kern: 'bg-green-500/20 text-green-400
 
 export default function WatchlistsPage() {
   const { watchlistOrgs, signals, contacts, toggleOrgActive, removeOrg, addWatchlistOrg, settings, updateOrgRank } = useStore();
-  const domainConfig = settings.domainConfig;
-  const [activeDomain, setActiveDomain] = useState<Domain | 'all'>('all');
+  const domainDefs = settings.domains ?? [];
+  const domainIds = domainDefs.map(d => d.id);
+  const [activeDomain, setActiveDomain] = useState<string>('all');
   const [showAdd, setShowAdd] = useState(false);
-  const [addDomain, setAddDomain] = useState<Domain>('kunst');
+  const [addDomainId, setAddDomainId] = useState<string>(domainIds[0] ?? '');
 
-  const displayDomains = activeDomain === 'all' ? ALL_DOMAINS : [activeDomain as Domain];
+  const displayDomainIds = activeDomain === 'all' ? domainIds : [activeDomain];
   const activeCount = watchlistOrgs.filter(o => o.isActive).length;
   const phantomCapacity = 50;
 
-  // Customer engagement stats
   const customers = useMemo(() => contacts.filter(c => c.isCustomer), [contacts]);
   const customerUrls = useMemo(() => new Set(customers.map(c => c.linkedinUrl)), [customers]);
   const customerSignals = useMemo(() => signals.filter(s => customerUrls.has(s.contactLinkedinUrl)), [signals, customerUrls]);
@@ -40,7 +40,6 @@ export default function WatchlistsPage() {
       if (s.engagementType === 'like') stats[s.orgId].likes++;
       else stats[s.orgId].comments++;
     }
-    // Count unique customers per org
     for (const orgId of Object.keys(stats)) {
       const uniqueCustomers = new Set(customerSignals.filter(s => s.orgId === orgId).map(s => s.contactLinkedinUrl));
       stats[orgId].customers = uniqueCustomers.size;
@@ -62,50 +61,49 @@ export default function WatchlistsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Watchlists</h1>
-          <p className="text-xs text-muted-foreground">{watchlistOrgs.length} organisaties over {ALL_DOMAINS.length} domeinen</p>
+          <p className="text-xs text-muted-foreground">{watchlistOrgs.length} organisaties over {domainIds.length} domeinen</p>
         </div>
       </div>
 
-      {/* Customer coverage summary */}
       {customers.length > 0 && (
         <Card className="bg-card border-border">
           <CardContent className="p-4 flex items-center gap-4">
             <div className="flex-1">
               <p className="text-xs text-muted-foreground">{orgsWithEngagement} van {watchlistOrgs.length} organisaties hebben klant-engagement</p>
               <div className="flex items-center gap-2 mt-1">
-                <Progress value={(orgsWithEngagement / watchlistOrgs.length) * 100} className="flex-1 h-1.5" />
-                <span className="text-xs text-foreground font-medium">{Math.round((orgsWithEngagement / watchlistOrgs.length) * 100)}%</span>
+                <Progress value={(orgsWithEngagement / Math.max(watchlistOrgs.length, 1)) * 100} className="flex-1 h-1.5" />
+                <span className="text-xs text-foreground font-medium">{Math.round((orgsWithEngagement / Math.max(watchlistOrgs.length, 1)) * 100)}%</span>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Domain tabs */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button size="sm" variant={activeDomain === 'all' ? 'default' : 'outline'} className="text-xs h-8" onClick={() => setActiveDomain('all')}>Alle</Button>
-        {ALL_DOMAINS.map(d => (
-          <Button key={d} size="sm" variant={activeDomain === d ? 'default' : 'outline'} className="text-xs h-8 gap-1.5 whitespace-nowrap" onClick={() => setActiveDomain(d)}>
-            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: domainConfig[d].color }} />
-            {domainConfig[d].name}
+        {domainDefs.map(d => (
+          <Button key={d.id} size="sm" variant={activeDomain === d.id ? 'default' : 'outline'} className="text-xs h-8 gap-1.5 whitespace-nowrap" onClick={() => setActiveDomain(d.id)}>
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+            {d.name}
           </Button>
         ))}
       </div>
 
-      {/* Domain columns */}
-      <div className={`grid gap-4 ${activeDomain === 'all' ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 max-w-2xl'}`}>
-        {displayDomains.map(domain => {
-          const orgs = watchlistOrgs.filter(o => o.domain === domain);
+      <div className={`grid gap-4 ${activeDomain === 'all' ? `grid-cols-1 lg:grid-cols-${Math.min(domainIds.length, 3)}` : 'grid-cols-1 max-w-2xl'}`}>
+        {displayDomainIds.map(domainId => {
+          const orgs = watchlistOrgs.filter(o => o.domain === domainId);
+          const color = getDomainColor(domainDefs, domainId);
+          const name = getDomainName(domainDefs, domainId);
           return (
-            <Card key={domain} className="bg-card border-border">
+            <Card key={domainId} className="bg-card border-border">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: domainConfig[domain].color }} />
-                    <h3 className="text-sm font-semibold text-foreground">{domainConfig[domain].name}</h3>
+                    <div className="w-3 h-3 rounded-full" style={{ background: color }} />
+                    <h3 className="text-sm font-semibold text-foreground">{name}</h3>
                     <Badge variant="outline" className="text-[10px]">{orgs.length}</Badge>
                   </div>
-                  <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => { setAddDomain(domain); setShowAdd(true); }}>
+                  <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => { setAddDomainId(domainId); setShowAdd(true); }}>
                     <Plus className="h-3 w-3" />Toevoegen
                   </Button>
                 </div>
@@ -166,7 +164,6 @@ export default function WatchlistsPage() {
         })}
       </div>
 
-      {/* Summary footer */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
           <div className="grid grid-cols-3 gap-6 text-xs">
@@ -189,17 +186,17 @@ export default function WatchlistsPage() {
         </CardContent>
       </Card>
 
-      <AddOrgDialog open={showAdd} onClose={() => setShowAdd(false)} defaultDomain={addDomain} />
+      <AddOrgDialog open={showAdd} onClose={() => setShowAdd(false)} defaultDomain={addDomainId} />
     </div>
   );
 }
 
-function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose: () => void; defaultDomain: Domain }) {
+function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose: () => void; defaultDomain: string }) {
   const { addWatchlistOrg, watchlistOrgs, settings } = useStore();
-  const domainConfig = settings.domainConfig;
+  const domainDefs = settings.domains ?? [];
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const [domain, setDomain] = useState<Domain>(defaultDomain);
+  const [domain, setDomain] = useState<string>(defaultDomain);
   const [tier, setTier] = useState<Tier>('extended');
 
   const handleSave = () => {
@@ -220,9 +217,9 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs">Domein</Label>
-              <Select value={domain} onValueChange={v => setDomain(v as Domain)}>
+              <Select value={domain} onValueChange={v => setDomain(v)}>
                 <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>{ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{domainConfig[d].name}</SelectItem>)}</SelectContent>
+                <SelectContent>{domainDefs.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

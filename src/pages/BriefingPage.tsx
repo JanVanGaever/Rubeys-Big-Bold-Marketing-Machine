@@ -5,7 +5,7 @@ import { formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
 import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { ALL_DOMAINS } from '@/types';
+import { getDomainColor, getDomainName, getDomainById } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ export default function BriefingPage() {
   const { contacts, signals, settings, calibrationSuggestions } = useStore();
   const navigate = useNavigate();
   const today = new Date();
+  const domainDefs = settings.domains ?? [];
+  const domainIds = domainDefs.map(d => d.id);
 
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [pushContacts, setPushContacts] = useState<Contact[]>([]);
@@ -34,7 +36,7 @@ export default function BriefingPage() {
   const actionQueue = useMemo(() => {
     const items: Array<{ contact: typeof contacts[0]; reason: string; priority: number; type: 'new' | 'followup' | 'almost' }> = [];
     newHot.forEach(c => {
-      const reason = c.activeDomainCount === 3 ? `Nieuw in 3 domeinen actief` : `Score gestegen naar hot`;
+      const reason = c.activeDomainCount >= domainIds.length ? `Nieuw in alle ${domainIds.length} domeinen actief` : `Score gestegen naar hot`;
       items.push({ contact: c, reason, priority: 1, type: 'new' });
     });
     followUp.forEach(c => {
@@ -45,7 +47,7 @@ export default function BriefingPage() {
       items.push({ contact: c, reason: `Bijna hot: score ${c.totalScore}, drempel ${settings.hotScoreThreshold}`, priority: 3, type: 'almost' });
     });
     return items.sort((a, b) => a.priority - b.priority);
-  }, [newHot, followUp, almostHot, today, settings.hotScoreThreshold]);
+  }, [newHot, followUp, almostHot, today, settings.hotScoreThreshold, domainIds.length]);
 
   const dayName = format(today, 'EEEE d MMMM', { locale: nl });
 
@@ -134,13 +136,14 @@ export default function BriefingPage() {
                           </div>
                         </div>
                         <div className="flex gap-1.5 flex-wrap">
-                          {ALL_DOMAINS.filter(d => c.domains[d].signalCount > 0).map(d => {
-                            const meta = settings.domainConfig[d];
+                          {domainIds.filter(d => (c.domains[d]?.signalCount ?? 0) > 0).map(d => {
+                            const color = getDomainColor(domainDefs, d);
+                            const name = getDomainName(domainDefs, d);
                             const lastOrg = signals.filter(s => s.contactLinkedinUrl === c.linkedinUrl && s.domain === d).sort((a, b) => b.detectedAt.localeCompare(a.detectedAt))[0];
                             const timeAgo = lastOrg ? formatDistanceToNow(new Date(lastOrg.detectedAt), { locale: nl }) : '';
                             return (
-                              <Badge key={d} variant="outline" className="text-[10px] px-2 py-0.5" style={{ borderColor: meta.color, color: meta.color }}>
-                                {meta.name.split(' ')[0]}: {lastOrg?.orgName} {lastOrg?.engagementType === 'like' ? 'liked' : 'comment'} {timeAgo && `${timeAgo} geleden`}
+                              <Badge key={d} variant="outline" className="text-[10px] px-2 py-0.5" style={{ borderColor: color, color }}>
+                                {name.split(' ')[0]}: {lastOrg?.orgName} {lastOrg?.engagementType === 'like' ? 'liked' : 'comment'} {timeAgo && `${timeAgo} geleden`}
                               </Badge>
                             );
                           })}
@@ -212,14 +215,14 @@ export default function BriefingPage() {
                         </td>
                         <td className="p-3">
                           <div className="flex justify-center gap-1">
-                            {ALL_DOMAINS.map(d => (
-                              <div key={d} className="w-2.5 h-2.5 rounded-full" style={{ background: settings.domainConfig[d].color, opacity: c.domains[d].signalCount > 0 ? 1 : 0.15 }} />
+                            {domainDefs.map(d => (
+                              <div key={d.id} className="w-2.5 h-2.5 rounded-full" style={{ background: d.color, opacity: (c.domains[d.id]?.signalCount ?? 0) > 0 ? 1 : 0.15 }} />
                             ))}
                           </div>
                         </td>
                         <td className="p-3 text-right text-muted-foreground">
                           {(() => {
-                            const last = ALL_DOMAINS.map(d => c.domains[d].lastSignalAt).filter(Boolean).sort().reverse()[0];
+                            const last = domainIds.map(d => c.domains[d]?.lastSignalAt).filter(Boolean).sort().reverse()[0];
                             return last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : '—';
                           })()}
                         </td>
