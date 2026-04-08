@@ -164,12 +164,16 @@ export default function HandleidingPage() {
         <section id="enrichment" className="space-y-3 scroll-mt-6">
           <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">Enrichment</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <Tag>Apollo.io</Tag> wordt gebruikt om contactgegevens te verrijken via <Tag>n8n webhooks</Tag>. Alle API-calls verlopen via n8n, zodat API keys veilig aan de serverzijde blijven.
+            De enrichment-pipeline werkt als <Tag>waterfall</Tag>. <Tag>Apollo.io</Tag> zoekt eerst naar contactgegevens. Als <Tag>Dropcontact</Tag> geconfigureerd is, verifieert en vult het de email aan. Dropcontact is optioneel maar wordt aanbevolen voor Europese leads vanwege hogere hit rates en GDPR-compliance.
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Alle API-calls verlopen via <Tag>n8n webhooks</Tag>, zodat API keys veilig aan de serverzijde blijven.
           </p>
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>• Email adres (prioriteit: persoonlijk {'>'} zakelijk)</p>
             <p>• Telefoonnummer</p>
             <p>• Bedrijfsgrootte en industrie</p>
+            <p>• Email verificatie via Dropcontact (GDPR-compliant)</p>
           </div>
         </section>
 
