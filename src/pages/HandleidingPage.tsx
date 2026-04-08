@@ -164,12 +164,16 @@ export default function HandleidingPage() {
         <section id="enrichment" className="space-y-3 scroll-mt-6">
           <h2 className="text-lg font-semibold text-foreground border-b border-border pb-2">Enrichment</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            <Tag>Apollo.io</Tag> wordt gebruikt om contactgegevens te verrijken via <Tag>n8n webhooks</Tag>. Alle API-calls verlopen via n8n, zodat API keys veilig aan de serverzijde blijven.
+            De enrichment-pipeline werkt als <Tag>waterfall</Tag>. <Tag>Apollo.io</Tag> zoekt eerst naar contactgegevens. Als <Tag>Dropcontact</Tag> geconfigureerd is, verifieert en vult het de email aan. Dropcontact is optioneel maar wordt aanbevolen voor Europese leads vanwege hogere hit rates en GDPR-compliance.
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Alle API-calls verlopen via <Tag>n8n webhooks</Tag>, zodat API keys veilig aan de serverzijde blijven.
           </p>
           <div className="space-y-1 text-sm text-muted-foreground">
             <p>• Email adres (prioriteit: persoonlijk {'>'} zakelijk)</p>
             <p>• Telefoonnummer</p>
             <p>• Bedrijfsgrootte en industrie</p>
+            <p>• Email verificatie via Dropcontact (GDPR-compliant)</p>
           </div>
         </section>
 
@@ -254,10 +258,21 @@ export default function HandleidingPage() {
               <p><strong className="text-foreground">Output:</strong> Array van campagnes met <Tag>id</Tag>, <Tag>name</Tag>, <Tag>status</Tag>, <Tag>stats</Tag></p>
             </WorkflowSection>
 
-            <WorkflowSection title="7. Test endpoints">
+            <WorkflowSection title="7. dropcontact-enrich — Dropcontact verrijking (optioneel)">
+              <p><strong className="text-foreground">Trigger:</strong> Webhook node (<Tag>POST</Tag>, pad: <Tag>/dropcontact-enrich</Tag>)</p>
+              <p><strong className="text-foreground">Input:</strong></p>
+              <p className="pl-4 font-mono text-[11px]">{`{ service: 'dropcontact', action: 'dropcontact-enrich', payload: { firstName, lastName, company, companyWebsite, email } }`}</p>
+              <p><strong className="text-foreground">Logica:</strong> Dropcontact API — email lookup + verificatie</p>
+              <p><strong className="text-foreground">Output:</strong></p>
+              <p className="pl-4 font-mono text-[11px]">{`{ email, phone, jobTitle, company, companyWebsite, isVerified }`}</p>
+              <p className="text-amber-400 text-[11px]">Optioneel — alleen nodig als je Europese leads wilt verrijken met GDPR-compliant data.</p>
+            </WorkflowSection>
+
+            <WorkflowSection title="8. Test endpoints">
               <p>Simpele API key validatie workflows:</p>
               <div className="pl-4 space-y-1">
                 <p>• <Tag>apollo-test</Tag> — Valideer Apollo API key</p>
+                <p>• <Tag>dropcontact-test</Tag> — Valideer Dropcontact API key</p>
                 <p>• <Tag>hubspot-test</Tag> — Valideer HubSpot API key/OAuth token</p>
                 <p>• <Tag>lemlist-test</Tag> — Valideer Lemlist API key</p>
                 <p>• <Tag>health</Tag> — Retourneer <Tag>{`{ status: 'ok', timestamp: now }`}</Tag></p>

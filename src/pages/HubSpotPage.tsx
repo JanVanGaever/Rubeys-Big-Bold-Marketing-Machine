@@ -119,6 +119,7 @@ export default function HubSpotPage() {
             lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: '',
             engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
             previousScore: null, scoreChangedAt: null, isCustomer: false, customerSince: null,
+            enrichmentSource: 'none' as const, emailVerifiedByDropcontact: false, dropcontactEnrichedAt: null,
           });
           created++;
         }

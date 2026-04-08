@@ -9,10 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, CheckCircle, XCircle, Mail, Phone, Zap, Loader2 } from 'lucide-react';
+import { Database, CheckCircle, XCircle, Mail, Phone, Zap, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { enrichContact, enrichBatch, isConnectionReady } from '@/lib/api-service';
+import { waterfallEnrich, isConnectionReady, isDropcontactReady } from '@/lib/api-service';
 import { toast } from 'sonner';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -43,6 +43,7 @@ export default function EnrichmentPage() {
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   const ready = isConnectionReady('apollo');
+  const dcReady = isDropcontactReady();
 
   const queue = contacts.filter(c => (c.status === 'warm' || c.status === 'hot') && !c.isEnriched)
     .sort((a, b) => b.totalScore - a.totalScore);
@@ -58,6 +59,7 @@ export default function EnrichmentPage() {
   const totalEnriched = enrichedAll.length;
   const emailHitRate = totalEnriched > 0 ? Math.round((enrichedAll.filter(c => c.email).length / totalEnriched) * 100) : 0;
   const phoneHitRate = totalEnriched > 0 ? Math.round((enrichedAll.filter(c => c.phone).length / totalEnriched) * 100) : 0;
+  const dropcontactVerifiedCount = enrichedAll.filter(c => c.emailVerifiedByDropcontact).length;
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
@@ -73,22 +75,61 @@ export default function EnrichmentPage() {
     if (!ready) { toast.error('Apollo of n8n niet geconfigureerd'); return; }
 
     setEnrichingIds(prev => new Set(prev).add(contactId));
-    const result = await enrichContact({ linkedinUrl: c.linkedinUrl, firstName: c.firstName, lastName: c.lastName, company: c.company });
+    const result = await waterfallEnrich({
+      linkedinUrl: c.linkedinUrl,
+      firstName: c.firstName,
+      lastName: c.lastName,
+      company: c.company,
+    });
     setEnrichingIds(prev => { const n = new Set(prev); n.delete(contactId); return n; });
 
     if (result.success && result.data) {
       const d = result.data;
       const fieldsFound: string[] = [];
       const fieldsMissing: string[] = [];
-      const email = d.personalEmail || d.workEmail || d.email || null;
-      if (email) fieldsFound.push('email'); else fieldsMissing.push('email');
+
+      if (d.email) {
+        if (d.emailVerified) fieldsFound.push('email (geverifieerd)');
+        else if (d.source === 'dropcontact') fieldsFound.push('email (Dropcontact)');
+        else fieldsFound.push('email (Apollo)');
+      } else {
+        fieldsMissing.push('email');
+      }
       if (d.phone) fieldsFound.push('phone'); else fieldsMissing.push('phone');
-      updateContact(contactId, { email: email || c.email, phone: d.phone || c.phone, title: c.title || d.title || null, company: c.company || d.company || null, isEnriched: true, enrichedAt: new Date().toISOString() });
-      addEnrichmentRecord({ id: `enr-${Date.now()}`, contactId, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: fieldsMissing.length > 0 ? 'partial' : 'success', fieldsFound, fieldsMissing });
+
+      updateContact(contactId, {
+        email: d.email || c.email,
+        phone: d.phone || c.phone,
+        title: c.title || d.title || null,
+        company: c.company || d.company || null,
+        isEnriched: true,
+        enrichedAt: new Date().toISOString(),
+        enrichmentSource: d.source,
+        emailVerifiedByDropcontact: d.emailVerified,
+        dropcontactEnrichedAt: d.dropcontactResult ? new Date().toISOString() : null,
+      });
+
+      addEnrichmentRecord({
+        id: `enr-${Date.now()}`,
+        contactId,
+        contactName: `${c.firstName} ${c.lastName}`,
+        date: new Date().toISOString(),
+        status: fieldsMissing.length > 0 ? 'partial' : 'success',
+        fieldsFound,
+        fieldsMissing,
+      });
       recomputeScores();
       toast.success(`${c.firstName} ${c.lastName} verrijkt: ${fieldsFound.join(' + ') || 'geen nieuwe data'}`);
     } else {
-      addEnrichmentRecord({ id: `enr-${Date.now()}`, contactId, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: 'error', fieldsFound: [], fieldsMissing: ['email', 'phone'] });
+      addEnrichmentRecord({
+        id: `enr-${Date.now()}`,
+        contactId,
+        contactName: `${c.firstName} ${c.lastName}`,
+        date: new Date().toISOString(),
+        status: 'error',
+        fieldsFound: [],
+        fieldsMissing: ['email', 'phone'],
+      });
       toast.error(result.error || 'Verrijking mislukt');
     }
   };
@@ -98,27 +139,68 @@ export default function EnrichmentPage() {
     if (!ready) { toast.error('Apollo of n8n niet geconfigureerd'); return; }
 
     setBatchProgress({ done: 0, total: targets.length });
-    const result = await enrichBatch(targets.map(c => ({ id: c.id, linkedinUrl: c.linkedinUrl, firstName: c.firstName, lastName: c.lastName, company: c.company })));
-    setBatchProgress(null);
 
-    if (result.success && result.data) {
-      let emailsFound = 0; let errors = 0;
-      for (const c of targets) {
-        const d = result.data[c.id];
-        if (d) {
-          const email = d.personalEmail || d.workEmail || d.email || null;
-          if (email) emailsFound++;
-          updateContact(c.id, { email: email || c.email, phone: d.phone || c.phone, title: c.title || d.title || null, company: c.company || d.company || null, isEnriched: true, enrichedAt: new Date().toISOString() });
-          addEnrichmentRecord({ id: `enr-${Date.now()}-${c.id}`, contactId: c.id, contactName: `${c.firstName} ${c.lastName}`, date: new Date().toISOString(), status: 'success', fieldsFound: email ? ['email'] : [], fieldsMissing: email ? [] : ['email'] });
-        } else {
-          errors++;
+    // Sequential waterfall per contact with limited concurrency
+    const concurrency = 3;
+    let done = 0;
+    let emailsFound = 0;
+    let errors = 0;
+
+    const processContact = async (c: typeof targets[0]) => {
+      const result = await waterfallEnrich({
+        linkedinUrl: c.linkedinUrl,
+        firstName: c.firstName,
+        lastName: c.lastName,
+        company: c.company,
+      });
+
+      if (result.success && result.data) {
+        const d = result.data;
+        if (d.email) emailsFound++;
+        const fieldsFound: string[] = [];
+        if (d.email) {
+          if (d.emailVerified) fieldsFound.push('email (geverifieerd)');
+          else if (d.source === 'dropcontact') fieldsFound.push('email (Dropcontact)');
+          else fieldsFound.push('email (Apollo)');
         }
+        if (d.phone) fieldsFound.push('phone');
+
+        updateContact(c.id, {
+          email: d.email || c.email,
+          phone: d.phone || c.phone,
+          title: c.title || d.title || null,
+          company: c.company || d.company || null,
+          isEnriched: true,
+          enrichedAt: new Date().toISOString(),
+          enrichmentSource: d.source,
+          emailVerifiedByDropcontact: d.emailVerified,
+          dropcontactEnrichedAt: d.dropcontactResult ? new Date().toISOString() : null,
+        });
+        addEnrichmentRecord({
+          id: `enr-${Date.now()}-${c.id}`,
+          contactId: c.id,
+          contactName: `${c.firstName} ${c.lastName}`,
+          date: new Date().toISOString(),
+          status: fieldsFound.length > 0 ? 'success' : 'partial',
+          fieldsFound,
+          fieldsMissing: d.email ? [] : ['email'],
+        });
+      } else {
+        errors++;
       }
-      recomputeScores();
-      toast.success(`${targets.length} contacten verrijkt, ${emailsFound} emails gevonden${errors > 0 ? `, ${errors} fouten` : ''}`);
-    } else {
-      toast.error(result.error || 'Batch verrijking mislukt');
+      done++;
+      setBatchProgress({ done, total: targets.length });
+    };
+
+    // Process in chunks of `concurrency`
+    for (let i = 0; i < targets.length; i += concurrency) {
+      const chunk = targets.slice(i, i + concurrency);
+      await Promise.all(chunk.map(processContact));
     }
+
+    setBatchProgress(null);
+    recomputeScores();
+    toast.success(`${targets.length} contacten verrijkt, ${emailsFound} emails gevonden${errors > 0 ? `, ${errors} fouten` : ''}`);
     setSelectedIds(new Set());
   };
 
@@ -154,16 +236,27 @@ export default function EnrichmentPage() {
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Enrichment</h1>
-        <p className="text-xs text-muted-foreground">Beheer en monitor Apollo-verrijking van contacten</p>
+        <p className="text-xs text-muted-foreground">Beheer en monitor contactverrijking via Apollo + Dropcontact waterfall</p>
       </div>
       <ConnectionAlert connectionId="apollo" featureName="Enrichment" />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {!dcReady && ready && (
+        <div className="flex items-center gap-2 bg-amber-500/5 border border-amber-500/15 rounded-lg px-3 py-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          <span className="text-[10px] text-amber-400">
+            Dropcontact is niet verbonden. Email verificatie en Europese enrichment niet actief.
+            <a href="/settings/setup" className="text-primary hover:underline ml-1">Configureer in Setup</a>
+          </span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Totaal verrijkt', value: totalEnriched.toString(), icon: Database },
           { label: 'Email hit rate', value: `${emailHitRate}%`, icon: Mail },
           { label: 'Telefoon hit rate', value: `${phoneHitRate}%`, icon: Phone },
           { label: 'Enrichment records', value: enrichmentHistory.length.toString(), icon: Zap },
+          { label: 'DC geverifieerd', value: dropcontactVerifiedCount.toString(), icon: ShieldCheck },
         ].map(s => (
           <Card key={s.label} className="bg-card border-border">
             <CardContent className="p-4">
@@ -287,6 +380,7 @@ export default function EnrichmentPage() {
                   <TableHead className="text-xs">Email</TableHead>
                   <TableHead className="text-xs">Telefoon</TableHead>
                   <TableHead className="text-xs">Bedrijfsdata</TableHead>
+                  <TableHead className="text-xs">Bron</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -297,6 +391,19 @@ export default function EnrichmentPage() {
                     <TableCell>{c.email ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />}</TableCell>
                     <TableCell>{c.phone ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />}</TableCell>
                     <TableCell>{c.company ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {c.enrichmentSource === 'apollo' && <Badge className="text-[9px] bg-blue-500/15 text-blue-400 border-blue-500/20">Apollo</Badge>}
+                        {c.enrichmentSource === 'dropcontact' && <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20">Dropcontact</Badge>}
+                        {c.enrichmentSource === 'both' && (
+                          <>
+                            <Badge className="text-[9px] bg-blue-500/15 text-blue-400 border-blue-500/20">Apollo</Badge>
+                            <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20">DC</Badge>
+                          </>
+                        )}
+                        {c.emailVerifiedByDropcontact && <ShieldCheck className="h-3 w-3 text-emerald-400" />}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -323,6 +430,38 @@ export default function EnrichmentPage() {
                 <Badge className={ready ? "bg-green-500/20 text-green-400 border-green-500/30 text-[10px]" : "bg-muted text-muted-foreground border-border text-[10px]"}>
                   {ready ? 'Connected' : 'Niet verbonden'}
                 </Badge>
+              </div>
+
+              <div className="border-t border-border pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs">Dropcontact API status</Label>
+                    <p className="text-[10px] text-muted-foreground">GDPR-compliant email verificatie via n8n</p>
+                  </div>
+                  <Badge className={dcReady ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]" : "bg-muted text-muted-foreground border-border text-[10px]"}>
+                    {dcReady ? 'Connected' : 'Niet verbonden'}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4 mt-4">
+                <Label className="text-xs mb-2 block">Waterfall strategie</Label>
+                <p className="text-[10px] text-muted-foreground mb-3">
+                  De enrichment pipeline werkt als waterfall: Apollo probeert eerst, daarna Dropcontact.
+                </p>
+                <div className="space-y-2 pl-3 border-l-2 border-blue-500/30">
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    <span className="text-[10px] text-foreground">Stap 1: Apollo — contactdata + bedrijfsdata + email</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[10px] text-foreground">Stap 2: Dropcontact — email verificatie + aanvulling (Europa)</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2">
+                  Als Dropcontact niet verbonden is, draait alleen Apollo. Geen data gaat verloren.
+                </p>
               </div>
 
               <div>

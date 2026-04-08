@@ -45,6 +45,15 @@ const DEFAULT_CONNECTIONS: Connection[] = [
     config: {},
   },
   {
+    id: 'dropcontact',
+    name: 'Dropcontact',
+    description: 'GDPR-compliant email verificatie en verrijking (Europa)',
+    status: 'not_configured',
+    statusMessage: '',
+    lastChecked: null,
+    config: {},
+  },
+  {
     id: 'lemlist',
     name: 'Lemlist',
     description: 'Outreach campagnes beheren',
