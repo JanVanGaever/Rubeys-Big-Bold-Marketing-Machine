@@ -39,6 +39,14 @@ const statusColors: Record<Contact["status"], string> = {
   cold: "bg-muted-foreground/40",
 };
 
+const scoreDescriptions: Record<string, string> = {
+  Engagement: 'Gewogen activiteit op watchlist organisaties',
+  Keywords: 'Match van profiel-keywords uit titel en bedrijf',
+  'Cross-signaal': 'Activiteit over meerdere domeinen',
+  Enrichment: 'Beschikbaarheid van contactgegevens',
+  Diversiteit: 'Aantal unieke organisaties',
+};
+
 function ScoreBar({ label, score, weight }: { label: string; score: number; weight: number }) {
   return (
     <div className="space-y-0.5">
@@ -52,6 +60,9 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${score}%` }} />
       </div>
+      {scoreDescriptions[label] && (
+        <p className="text-[10px] text-muted-foreground/60">{scoreDescriptions[label]}</p>
+      )}
     </div>
   );
 }
