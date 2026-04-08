@@ -1,11 +1,9 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Zap, TrendingUp, Clock, Send, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Send, CalendarClock } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { useConnectionStore } from '@/stores/connectionStore';
 import { ALL_DOMAINS } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
