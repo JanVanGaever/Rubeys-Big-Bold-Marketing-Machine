@@ -38,6 +38,11 @@ function relativeTime(iso: string) {
 
 export default function ImportPage() {
   const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
+  const n8nConfig = useConnectionStore(s => s.connections.find(c => c.id === 'n8n')?.config);
+  const phantomConfig = useConnectionStore(s => s.connections.find(c => c.id === 'phantombuster')?.config);
+  const n8nBaseUrl = n8nConfig?.webhookUrl?.replace(/\/$/, '') || '';
+  const webhookUrl = n8nBaseUrl ? `${n8nBaseUrl}/phantombuster-signals` : 'Configureer eerst n8n in Setup';
+
   const [csvData, setCsvData] = useState<string[][] | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
@@ -49,7 +54,6 @@ export default function ImportPage() {
   const [dragActive, setDragActive] = useState<'csv' | 'phantom' | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const phantomRef = useRef<HTMLInputElement>(null);
-  const webhookUrl = 'https://n8n.rubey.be/webhook/phantombuster-signals';
 
   const parseCSV = (text: string): { headers: string[]; rows: string[][] } => {
     const lines = text.trim().split('\n');
