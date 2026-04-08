@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Target,
   Tags,
   Database,
+  HardDrive,
   Send,
   Palette,
   Bell,
