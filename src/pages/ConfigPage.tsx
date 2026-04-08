@@ -206,8 +206,9 @@ function ScoringSection() {
         <div className="flex items-center justify-between">
           <p className="text-xs font-medium text-foreground">Component gewichten</p>
           <span
-            className={`text-[10px] px-2 py-0.5 rounded-full ${valid ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}
-          >
+<span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            Relatieve gewichten (som: {total})
+          </span>
             Totaal: {total}/100
           </span>
         </div>
