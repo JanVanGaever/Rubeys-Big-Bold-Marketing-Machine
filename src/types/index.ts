@@ -94,6 +94,9 @@ export interface Contact {
   scoreChangedAt: string | null;
   isCustomer: boolean;
   customerSince: string | null;
+  enrichmentSource: 'none' | 'apollo' | 'dropcontact' | 'both';
+  emailVerifiedByDropcontact: boolean;
+  dropcontactEnrichedAt: string | null;
 }
 
 export interface AppSettings {

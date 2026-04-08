@@ -264,6 +264,9 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
       previousScore: null, scoreChangedAt: null,
       isCustomer: c.isCustomer ?? false,
       customerSince: c.isCustomer ? daysAgo(60) : null,
+      enrichmentSource: c.enriched ? 'apollo' : 'none',
+      emailVerifiedByDropcontact: false,
+      dropcontactEnrichedAt: null,
     });
   });
 
