@@ -87,7 +87,7 @@ export default function AppSidebar() {
       </nav>
 
       <div
-        onClick={() => window.location.href = '/settings/setup'}
+        onClick={() => navigate('/settings/setup')}
         className="px-4 py-2 border-t border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-colors"
       >
         <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2">
