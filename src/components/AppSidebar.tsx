@@ -21,6 +21,7 @@ const settingsNav = [
 
 export default function AppSidebar() {
   const connections = useConnectionStore((s) => s.connections);
+  const navigate = useNavigate();
 
   const getConnectionAlert = (connectionId?: string) => {
     if (!connectionId) return null;
