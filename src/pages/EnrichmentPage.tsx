@@ -84,6 +84,9 @@ export default function EnrichmentPage() {
         <h1 className="text-2xl font-bold text-foreground">Enrichment</h1>
         <p className="text-xs text-muted-foreground">Beheer en monitor Apollo-verrijking van contacten</p>
       </div>
+      <ConnectionAlert connectionId="apollo" featureName="Enrichment" />
+        <p className="text-xs text-muted-foreground">Beheer en monitor Apollo-verrijking van contacten</p>
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
