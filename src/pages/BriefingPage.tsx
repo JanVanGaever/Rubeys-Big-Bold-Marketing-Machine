@@ -3,21 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, List } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ALL_DOMAINS } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useConnectionStore } from '@/stores/connectionStore';
-import ConnectionAlert from '@/components/ConnectionAlert';
 
 const fadeIn = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 export default function BriefingPage() {
-  const { contacts, signals, settings } = useStore();
+  const { contacts, signals, settings, calibrationSuggestions } = useStore();
   const navigate = useNavigate();
   const today = new Date();
 
@@ -25,6 +23,8 @@ export default function BriefingPage() {
   const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts, today]);
   const almostHot = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore >= settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
   const warmRisers = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore < settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
+
+  const pendingCalibrations = useMemo(() => calibrationSuggestions.filter(s => s.status === 'pending'), [calibrationSuggestions]);
 
   const actionQueue = useMemo(() => {
     const items: Array<{ contact: typeof contacts[0]; reason: string; priority: number; type: 'new' | 'followup' | 'almost' }> = [];
@@ -44,7 +44,6 @@ export default function BriefingPage() {
 
   const dayName = format(today, 'EEEE d MMMM', { locale: nl });
 
-  // Empty state
   if (contacts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -55,9 +54,7 @@ export default function BriefingPage() {
           <p>2. Importeer je eerste contacten via Import</p>
           <p>3. Stel je watchlist-organisaties in via Watchlists</p>
         </div>
-        <Button onClick={() => navigate('/settings/setup')} className="gap-2">
-          <Zap className="h-4 w-4" />Start setup
-        </Button>
+        <Button onClick={() => navigate('/settings/setup')} className="gap-2"><Zap className="h-4 w-4" />Start setup</Button>
       </div>
     );
   }
@@ -224,6 +221,31 @@ export default function BriefingPage() {
             </CardContent>
           </Card>
         </section>
+      )}
+
+      {/* Calibration status block */}
+      {pendingCalibrations.length > 0 && (
+        <Card className="bg-purple-500/5 border-purple-500/20">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+              <span className="text-sm text-foreground">{pendingCalibrations.length} kalibratie-suggestie{pendingCalibrations.length > 1 ? 's' : ''} wachten op je beslissing</span>
+            </div>
+            <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => navigate('/kalibratie')}>
+              <Sparkles className="h-3.5 w-3.5" />Bekijk suggesties
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      {pendingCalibrations.length === 0 && contacts.filter(c => c.isCustomer).length >= 5 && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Kalibratie up to date</span>
+            <Button size="sm" variant="ghost" className="text-xs gap-1" onClick={() => navigate('/kalibratie')}>
+              <Sparkles className="h-3.5 w-3.5" />Opnieuw analyseren
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
