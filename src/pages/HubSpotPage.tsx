@@ -29,8 +29,8 @@ export default function HubSpotPage() {
   const { contacts, settings, updateSettings, syncHistory, addSyncRecord, addContact, updateContact, recomputeScores, signals } = useStore();
   const ready = isConnectionReady('hubspot');
 
-  const syncRules = settings.hubspotSyncRules;
-  const mappings = settings.hubspotFieldMappings;
+  const syncRules = settings.hubspotSyncRules ?? { who: 'hot', when: 'manual', fields: { nameContact: true, scoreStatus: true, domainTags: true, signalHistory: false, enrichmentData: true, notes: false } };
+  const mappings = settings.hubspotFieldMappings ?? [{ lc: 'firstName', hs: 'firstname' }, { lc: 'lastName', hs: 'lastname' }, { lc: 'email', hs: 'email' }, { lc: 'phone', hs: 'phone' }, { lc: 'company', hs: 'company' }];
 
   const [syncing, setSyncing] = useState(false);
   const [pulling, setPulling] = useState(false);
