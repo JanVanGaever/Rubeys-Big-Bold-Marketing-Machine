@@ -238,7 +238,7 @@ export default function EnrichmentPage() {
                       <TableCell>
                         <div className="flex gap-1">
                           {Object.entries(c.domains).filter(([, d]) => d.signalCount > 0).map(([key]) => (
-                            <div key={key} className="w-2 h-2 rounded-full" style={{ background: domainConfig[key as keyof typeof domainConfig]?.color || '#666' }} />
+                            <div key={key} className="w-2 h-2 rounded-full" style={{ background: domainDefs.find(d => d.id === key)?.color || '#666' }} />
                           ))}
                         </div>
                       </TableCell>
