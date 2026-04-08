@@ -190,7 +190,7 @@ function SliderRow({
 /* ═══ SECTIONS ═══ */
 
 function ScoringSection() {
-  const { settings, updateScoreWeights, setThreshold, setDecayDays } = useStore();
+  const { settings, updateScoreWeights, setThreshold, setDecayDays, updateSettings } = useStore();
   const { scoreWeights, hotScoreThreshold, warmThreshold, decayDaysUntilCold } = settings;
   const total = Object.values(scoreWeights).reduce((a, b) => a + b, 0);
 
@@ -257,6 +257,20 @@ function ScoringSection() {
         />
         <p className="text-[10px] text-muted-foreground">
           Na hoeveel dagen zonder nieuw signaal wordt een contact cold?
+        </p>
+      </div>
+
+      <div className="border-t border-border pt-4 space-y-3">
+        <p className="text-xs font-medium text-foreground">Organisatie-cap</p>
+        <SliderRow
+          label="Max signalen per organisatie"
+          value={settings.maxSignalsPerOrg ?? 5}
+          min={1}
+          max={20}
+          onChange={(v) => updateSettings({ maxSignalsPerOrg: v })}
+        />
+        <p className="text-[10px] text-muted-foreground">
+          Hoeveel signalen van dezelfde organisatie tellen maximaal mee voor de engagement score?
         </p>
       </div>
     </div>
