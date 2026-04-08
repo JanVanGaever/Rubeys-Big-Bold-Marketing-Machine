@@ -34,7 +34,7 @@ function relativeTime(iso: string) {
 }
 
 export default function ImportPage() {
-  const { contacts, addContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores } = useStore();
+  const { contacts, addContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
   const [csvData, setCsvData] = useState<string[][] | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
@@ -130,11 +130,7 @@ export default function ImportPage() {
           location: null,
           source: 'import',
           addedAt: new Date().toISOString(),
-          domains: {
-            kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-            beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-            luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-          },
+          domains: Object.fromEntries(settings.domains.map(d => [d.id, { signalCount: 0, lastSignalAt: null, weightedScore: 0 }])),
           activeDomainCount: 0,
           totalScore: 0,
           status: 'cold',
@@ -212,11 +208,7 @@ export default function ImportPage() {
           location: null,
           source: 'import',
           addedAt: new Date().toISOString(),
-          domains: {
-            kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-            beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-            luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-          },
+          domains: Object.fromEntries(settings.domains.map(d => [d.id, { signalCount: 0, lastSignalAt: null, weightedScore: 0 }])),
           activeDomainCount: 0,
           totalScore: 0,
           status: 'cold',
