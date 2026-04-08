@@ -102,10 +102,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         if (!conn) return;
 
         setConnectionStatus(id, 'testing', 'Verbinding testen...');
-
         await new Promise((r) => setTimeout(r, 1500));
-
-        const updatedConn = get().connections.find((c) => c.id === id)!;
 
         if (id === 'chrome-extension') {
           setConnectionStatus(id, 'connected', 'Extensie gedetecteerd');
@@ -113,7 +110,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         }
 
         if (id === 'n8n') {
-          const url = updatedConn.config.webhookUrl;
+          const url = get().connections.find((c) => c.id === 'n8n')!.config.webhookUrl;
           if (url && url.trim()) {
             setConnectionStatus(id, 'connected', 'Webhook bereikbaar');
           } else {
@@ -122,12 +119,14 @@ export const useConnectionStore = create<ConnectionStore>()(
           return;
         }
 
-        const apiKey = updatedConn.config.apiKey;
-        if (apiKey && apiKey.trim()) {
-          setConnectionStatus(id, 'connected', 'API verbinding succesvol');
-        } else {
-          setConnectionStatus(id, 'error', 'Geen API key geconfigureerd');
+        // Apollo, HubSpot, Lemlist: check n8n status
+        const n8n = get().connections.find((c) => c.id === 'n8n');
+        if (!n8n || n8n.status !== 'connected') {
+          setConnectionStatus(id, 'not_configured', 'Wacht op n8n');
+          return;
         }
+        // Actual test happens via testServiceViaWebhook in SetupPage
+        setConnectionStatus(id, 'not_configured', 'Wacht op n8n');
       },
 
       setCurrentStep: (step) => set({ currentSetupStep: step }),

@@ -37,20 +37,13 @@ function StatusIndicator({ status, message }: { status: ConnectionStatus; messag
   );
 }
 
-function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="flex items-center gap-2">
-      <input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-      <button onClick={() => setShow(!show)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-secondary/40 transition-colors">
-        {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  );
-}
+const SERVICE_LABELS: Record<string, string> = {
+  apollo: 'Apollo',
+  hubspot: 'HubSpot',
+  lemlist: 'Lemlist',
+};
 
-function ConnectionFields({ id, config, onConfigChange, status }: { id: string; config: Record<string, string>; onConfigChange: (cfg: Record<string, string>) => void; status: ConnectionStatus }) {
+function ConnectionFields({ id, config, onConfigChange }: { id: string; config: Record<string, string>; onConfigChange: (cfg: Record<string, string>) => void; status: ConnectionStatus }) {
   if (id === 'chrome-extension') {
     return (
       <div className="space-y-3">
@@ -70,12 +63,13 @@ function ConnectionFields({ id, config, onConfigChange, status }: { id: string; 
       </div>
     );
   }
+  // Apollo, HubSpot, Lemlist – no API key fields, managed in n8n
+  const label = SERVICE_LABELS[id] || id;
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <label className="text-xs text-muted-foreground">API Key</label>
-        <SecretInput value={config.apiKey || ''} onChange={(v) => onConfigChange({ apiKey: v })} placeholder="Plak je API key hier..." />
-      </div>
+    <div className="p-3 rounded-lg bg-muted/30 border border-border">
+      <p className="text-xs text-muted-foreground">
+        API keys worden beheerd in n8n. Configureer je <span className="font-medium text-foreground">{label}</span> credentials in het n8n workflow.
+      </p>
     </div>
   );
 }
