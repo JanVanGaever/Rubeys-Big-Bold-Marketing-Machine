@@ -592,7 +592,161 @@ export default function ConfigPage() {
         <Section icon={Bell} title="Notificaties">
           <NotificationsSection />
         </Section>
+        <Section icon={HardDrive} title="Data beheer">
+          <DataSection />
+        </Section>
       </div>
     </motion.div>
+  );
+}
+
+/* ─── Data Section ─── */
+function DataSection() {
+  const store = useStore();
+  const connStore = useConnectionStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importPreview, setImportPreview] = useState<{ data: any; contacts: number; signals: number; orgs: number } | null>(null);
+  const [lastExportSize, setLastExportSize] = useState<string | null>(null);
+
+  const lsSize = (() => {
+    try {
+      let total = 0;
+      for (const key of ['rubey-store', 'rubey-connections']) {
+        const v = localStorage.getItem(key);
+        if (v) total += v.length * 2;
+      }
+      return (total / 1024).toFixed(1);
+    } catch { return '?'; }
+  })();
+
+  const handleExport = () => {
+    const { recomputeScores, addContact, addSignal, removeOrg, toggleOrgActive, addWatchlistOrg, updateOrgRank, updateContact, toggleCustomer, updateSettings, addImportRecord, addEnrichmentRecord, ...data } = store;
+
+    const connData = connStore.connections.map(c => ({
+      ...c,
+      config: Object.fromEntries(Object.entries(c.config).filter(([k]) => k !== 'apiKey')),
+    }));
+
+    const blob = new Blob([JSON.stringify({ ...data, connections: connData }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `rubey-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setLastExportSize(`${(blob.size / 1024).toFixed(1)} KB`);
+    toast.success('Backup geëxporteerd');
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        if (!data.contacts || !data.settings) {
+          toast.error('Ongeldig backup bestand: contacts of settings ontbreken');
+          return;
+        }
+        setImportPreview({
+          data,
+          contacts: data.contacts?.length ?? 0,
+          signals: data.signals?.length ?? 0,
+          orgs: data.watchlistOrgs?.length ?? 0,
+        });
+      } catch {
+        toast.error('Ongeldig JSON bestand');
+      }
+    };
+    reader.readAsText(file);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleImportConfirm = () => {
+    if (!importPreview) return;
+    const d = importPreview.data;
+    useStore.setState({
+      contacts: d.contacts ?? [],
+      signals: d.signals ?? [],
+      watchlistOrgs: d.watchlistOrgs ?? [],
+      campaigns: d.campaigns ?? [],
+      settings: d.settings,
+      calibrationSuggestions: d.calibrationSuggestions ?? [],
+      enrichmentHistory: d.enrichmentHistory ?? [],
+      syncHistory: d.syncHistory ?? [],
+      importHistory: d.importHistory ?? [],
+    });
+    if (d.connections) {
+      const restored = d.connections.map((c: any) => ({ ...c, config: c.config ?? {} }));
+      useConnectionStore.setState({ connections: restored });
+    }
+    store.recomputeScores();
+    setImportPreview(null);
+    toast.success('Backup hersteld');
+  };
+
+  return (
+    <div className="space-y-4 text-xs">
+      <div className="p-3 rounded-lg bg-muted/30 space-y-1">
+        <p className="text-foreground font-medium">Huidige data</p>
+        <p className="text-muted-foreground">{store.contacts.length} contacten · {store.signals.length} signalen · {store.watchlistOrgs.length} organisaties</p>
+        <p className="text-muted-foreground">Geschatte localStorage gebruik: {lsSize} KB van 5.000 KB</p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={handleExport}>
+          <Download className="h-3.5 w-3.5" />Exporteer alle data
+        </Button>
+        <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={() => fileRef.current?.click()}>
+          <Upload className="h-3.5 w-3.5" />Importeer backup
+        </Button>
+        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="destructive" className="text-xs gap-1.5">
+              <X className="h-3.5 w-3.5" />Reset alle data
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-card border-border">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-foreground">Alle data wissen?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Dit verwijdert alle contacten, signalen, organisaties en instellingen. Dit kan niet ongedaan worden gemaakt.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="text-xs">Annuleren</AlertDialogCancel>
+              <AlertDialogAction className="text-xs bg-destructive text-destructive-foreground" onClick={() => {
+                localStorage.removeItem('rubey-store');
+                localStorage.removeItem('rubey-connections');
+                window.location.reload();
+              }}>
+                Ja, alles wissen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {lastExportSize && <p className="text-muted-foreground">Laatste export: {lastExportSize}</p>}
+
+      <Dialog open={!!importPreview} onOpenChange={() => setImportPreview(null)}>
+        <DialogContent className="bg-card border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Backup importeren</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            Dit overschrijft alle huidige data. {importPreview?.contacts} contacten, {importPreview?.signals} signalen, {importPreview?.orgs} organisaties worden geladen. Doorgaan?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => setImportPreview(null)}>Annuleren</Button>
+            <Button size="sm" className="text-xs" onClick={handleImportConfirm}>Importeren</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
