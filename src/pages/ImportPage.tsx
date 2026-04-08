@@ -105,11 +105,13 @@ export default function ImportPage() {
     if (!linkedinIdx) return;
 
     let imported = 0, duplicates = 0, errors = 0;
-    const existingUrls = new Set(contacts.map(c => c.linkedinUrl));
+    const existingUrls = new Set(contacts.map(c => normalizeLinkedInUrl(c.linkedinUrl)));
 
     csvData.forEach(row => {
       try {
-        const url = row[Number(linkedinIdx[0])]?.toLowerCase().replace(/\/$/, '').replace(/\?.*$/, '');
+        const rawUrl = row[Number(linkedinIdx[0])]?.trim();
+        if (!rawUrl) { errors++; return; }
+        const url = normalizeLinkedInUrl(rawUrl);
         if (!url) { errors++; return; }
         if (existingUrls.has(url)) { duplicates++; return; }
 
@@ -182,12 +184,13 @@ export default function ImportPage() {
     });
 
     let newContacts = 0, updated = 0, newSignals = 0, skippedSignals = 0;
-    const existingUrls = new Set(contacts.map(c => c.linkedinUrl));
+    const existingUrls = new Set(contacts.map(c => normalizeLinkedInUrl(c.linkedinUrl)));
     const currentContacts = useStore.getState().contacts;
 
     phantomData.forEach(row => {
-      const profileUrl = colMap['profileUrl'] !== undefined ? row[colMap['profileUrl']]?.toLowerCase().replace(/\/$/, '') : null;
-      if (!profileUrl) return;
+      const rawProfileUrl = colMap['profileUrl'] !== undefined ? row[colMap['profileUrl']]?.trim() : null;
+      if (!rawProfileUrl) return;
+      const profileUrl = normalizeLinkedInUrl(rawProfileUrl);
 
       const firstName = colMap['firstName'] !== undefined ? row[colMap['firstName']] || 'Onbekend' : 'Onbekend';
       const lastName = colMap['lastName'] !== undefined ? row[colMap['lastName']] || '' : '';

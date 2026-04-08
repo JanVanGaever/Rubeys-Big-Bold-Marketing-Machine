@@ -497,10 +497,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
 
   const handleSave = () => {
     if (!form.linkedinUrl || !form.firstName || !form.lastName) return;
-    const url = form.linkedinUrl
-      .replace(/^https?:\/\//, "")
-      .replace(/\/$/, "")
-      .toLowerCase();
+    const url = normalizeLinkedInUrl(form.linkedinUrl);
     const newContact: Contact = {
       id: `contact-${Date.now()}`,
       linkedinUrl: url,
