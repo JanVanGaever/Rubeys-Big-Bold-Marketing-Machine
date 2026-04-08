@@ -21,6 +21,29 @@ export default function BriefingPage() {
   const navigate = useNavigate();
   const today = new Date();
 
+  const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && !c.lemlistCampaignId), [contacts]);
+  const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts, today]);
+  const almostHot = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore >= settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
+  const warmRisers = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore < settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
+
+  const actionQueue = useMemo(() => {
+    const items: Array<{ contact: typeof contacts[0]; reason: string; priority: number; type: 'new' | 'followup' | 'almost' }> = [];
+    newHot.forEach(c => {
+      const reason = c.activeDomainCount === 3 ? `Nieuw in 3 domeinen actief` : `Score gestegen naar hot`;
+      items.push({ contact: c, reason, priority: 1, type: 'new' });
+    });
+    followUp.forEach(c => {
+      const days = c.lemlistPushedAt ? Math.floor((today.getTime() - new Date(c.lemlistPushedAt).getTime()) / 86400000) : 0;
+      items.push({ contact: c, reason: `Follow-up: ${days} dagen geen reactie`, priority: 2, type: 'followup' });
+    });
+    almostHot.forEach(c => {
+      items.push({ contact: c, reason: `Bijna hot: score ${c.totalScore}, drempel ${settings.hotScoreThreshold}`, priority: 3, type: 'almost' });
+    });
+    return items.sort((a, b) => a.priority - b.priority);
+  }, [newHot, followUp, almostHot, today, settings.hotScoreThreshold]);
+
+  const dayName = format(today, 'EEEE d MMMM', { locale: nl });
+
   // Empty state
   if (contacts.length === 0) {
     return (
@@ -38,32 +61,6 @@ export default function BriefingPage() {
       </div>
     );
   }
-
-  const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && !c.lemlistCampaignId), [contacts]);
-  const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts, today]);
-  const almostHot = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore >= settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
-  const warmRisers = useMemo(() => contacts.filter(c => c.status === 'warm' && c.totalScore < settings.hotScoreThreshold - 10).sort((a, b) => b.totalScore - a.totalScore), [contacts, settings.hotScoreThreshold]);
-
-  // Build action queue with priority
-  const actionQueue = useMemo(() => {
-    const items: Array<{ contact: typeof contacts[0]; reason: string; priority: number; type: 'new' | 'followup' | 'almost' }> = [];
-    
-    newHot.forEach(c => {
-      const reason = c.activeDomainCount === 3 ? `Nieuw in 3 domeinen actief` : `Score gestegen naar hot`;
-      items.push({ contact: c, reason, priority: 1, type: 'new' });
-    });
-    followUp.forEach(c => {
-      const days = c.lemlistPushedAt ? Math.floor((today.getTime() - new Date(c.lemlistPushedAt).getTime()) / 86400000) : 0;
-      items.push({ contact: c, reason: `Follow-up: ${days} dagen geen reactie`, priority: 2, type: 'followup' });
-    });
-    almostHot.forEach(c => {
-      items.push({ contact: c, reason: `Bijna hot: score ${c.totalScore}, drempel ${settings.hotScoreThreshold}`, priority: 3, type: 'almost' });
-    });
-
-    return items.sort((a, b) => a.priority - b.priority);
-  }, [newHot, followUp, almostHot, today, settings.hotScoreThreshold]);
-
-  const dayName = format(today, 'EEEE d MMMM', { locale: nl });
 
   return (
     <div className="space-y-8">
