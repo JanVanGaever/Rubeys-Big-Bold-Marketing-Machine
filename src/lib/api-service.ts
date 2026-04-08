@@ -44,7 +44,11 @@ async function callWebhook<T>(connectionId: string, action: string, payload: Rec
 
       if (response.ok) {
         const data = await response.json() as T;
-        addApiLog({ timestamp: new Date().toISOString(), service: connectionId, action, status: 'success', durationMs: duration });
+        const schemaValid = validateResponseSchema(action, data);
+        addApiLog({ timestamp: new Date().toISOString(), service: connectionId, action, status: 'success', durationMs: duration, schemaValid });
+        if (!schemaValid) {
+          console.warn(`[API] Response for ${action} does not match expected schema`, data);
+        }
         return { success: true, data };
       }
 
