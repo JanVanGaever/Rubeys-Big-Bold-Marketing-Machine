@@ -44,9 +44,6 @@ export default function EnrichmentPage() {
   const [enrichFilter, setEnrichFilter] = useState<'all' | 'email' | 'phone' | 'incomplete'>('all');
   const [enrichFields, setEnrichFields] = useState({ email: true, phone: true, companySize: true, industry: true, website: false });
 
-  return (
-    <>
-      <ConnectionAlert connectionId="apollo" featureName="Enrichment" />
 
   // Queue: warm/hot, not enriched
   const queue = contacts.filter(c => (c.status === 'warm' || c.status === 'hot') && !c.isEnriched)
