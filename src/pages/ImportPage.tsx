@@ -144,13 +144,9 @@ export default function ImportPage() {
           lemlistPushedAt: null,
           lastContactedAt: null,
           notes: getVal('notes') || '',
-          engagementScore: 0,
-          keywordScore: 0,
-          crossSignalScore: 0,
-          enrichmentScore: 0,
-          diversityScore: 0,
-          previousScore: null,
-          scoreChangedAt: null,
+          engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
+          previousScore: null, scoreChangedAt: null,
+          isCustomer: false, customerSince: null,
         });
         existingUrls.add(url);
         imported++;
@@ -230,13 +226,9 @@ export default function ImportPage() {
           lemlistPushedAt: null,
           lastContactedAt: null,
           notes: '',
-          engagementScore: 0,
-          keywordScore: 0,
-          crossSignalScore: 0,
-          enrichmentScore: 0,
-          diversityScore: 0,
-          previousScore: null,
-          scoreChangedAt: null,
+          engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
+          previousScore: null, scoreChangedAt: null,
+          isCustomer: false, customerSince: null,
         });
         existingUrls.add(profileUrl);
         newContacts++;
