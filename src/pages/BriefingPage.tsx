@@ -206,6 +206,11 @@ export default function BriefingPage() {
               );
             })}
           </motion.div>
+          {hotCount > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {hotWithEmail} van {hotCount} hot leads hebben een email adres ({hotCount > 0 ? Math.round((hotWithEmail / hotCount) * 100) : 0}%)
+            </p>
+          )}
         </section>
       )}
 
