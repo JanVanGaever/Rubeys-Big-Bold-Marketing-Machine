@@ -190,7 +190,7 @@ function SliderRow({
 /* ═══ SECTIONS ═══ */
 
 function ScoringSection() {
-  const { settings, updateScoreWeights, setThreshold, setDecayDays } = useStore();
+  const { settings, updateScoreWeights, setThreshold, setDecayDays, updateSettings } = useStore();
   const { scoreWeights, hotScoreThreshold, warmThreshold, decayDaysUntilCold } = settings;
   const total = Object.values(scoreWeights).reduce((a, b) => a + b, 0);
 
