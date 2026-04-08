@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ScorePopover from "@/components/ScorePopover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -280,7 +281,13 @@ export default function ContactsPage() {
                           ))}
                         </div>
                       </td>
-                      <td className="p-3 text-center font-semibold text-foreground">{c.totalScore}</td>
+                      <td className="p-3 text-center">
+                        <ScorePopover contact={c} onOpenProfile={(id) => setSelectedId(id)}>
+                          <button className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
+                            {c.totalScore}
+                          </button>
+                        </ScorePopover>
+                      </td>
                       <td className="p-3 text-right text-muted-foreground">
                         {(() => {
                           const last = domainIds.map((d) => c.domains[d]?.lastSignalAt)
