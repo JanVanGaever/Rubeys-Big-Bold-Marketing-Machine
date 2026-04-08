@@ -306,6 +306,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   scoreWeights: { engagement: 30, profileKeywords: 25, crossSignal: 25, enrichment: 10, orgDiversity: 10 },
   warmThreshold: 40,
   decayDaysUntilCold: 30,
+  maxSignalsPerOrg: 5,
   positiveKeywords: ['kunst', 'investeren', 'collectie', 'galerie', 'beleggen', 'portefeuille', 'oldtimer', 'classic car', 'luxe', 'vermogensbeheer'],
   negativeKeywords: ['stage', 'student', 'gratis', 'goedkoop', 'crypto', 'NFT'],
   hubspotMapping: { leadSource: "Rubey's Big Bold Marketing Machine", lifecycleStage: 'lead', contactOwner: 'jan.van.gaever@rubey.be' },

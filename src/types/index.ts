@@ -114,6 +114,7 @@ export interface AppSettings {
   };
   warmThreshold: number;
   decayDaysUntilCold: number;
+  maxSignalsPerOrg: number;
   positiveKeywords: string[];
   negativeKeywords: string[];
   hubspotMapping: {

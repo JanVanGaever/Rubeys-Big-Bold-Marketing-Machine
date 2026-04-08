@@ -132,7 +132,9 @@ function recompute(
       }
     }
 
-    const contactSignals = signals.filter((s) => s.contactLinkedinUrl === c.linkedinUrl);
+    const contactSignals = signals
+      .filter((s) => s.contactLinkedinUrl === c.linkedinUrl)
+      .sort((a, b) => new Date(b.detectedAt).getTime() - new Date(a.detectedAt).getTime());
 
     let rawEngagement = 0;
     const uniqueOrgs = new Set<string>();
@@ -140,6 +142,8 @@ function recompute(
     const now = Date.now();
     const decayEnabled = normalizedSettings.recencyDecay;
     const decayDays = normalizedSettings.decayDaysUntilCold;
+    const maxPerOrg = normalizedSettings.maxSignalsPerOrg ?? 5;
+    const orgSignalCount = new Map<string, number>();
 
     for (const s of contactSignals) {
       if (!domains[s.domain]) {
@@ -153,6 +157,13 @@ function recompute(
       const orgScore = tierWeight / rank;
       dp.weightedScore += orgScore;
       if (!dp.lastSignalAt || s.detectedAt > dp.lastSignalAt) dp.lastSignalAt = s.detectedAt;
+
+      // Per-org cap: only count the first maxPerOrg signals per org for engagement
+      const orgCount = orgSignalCount.get(s.orgId) ?? 0;
+      uniqueOrgs.add(s.orgId);
+      if (orgCount >= maxPerOrg) continue;
+      orgSignalCount.set(s.orgId, orgCount + 1);
+
       const multiplier = s.engagementType === "comment" ? 3 : 1;
 
       let decayFactor = 1;
@@ -163,7 +174,6 @@ function recompute(
       }
 
       rawEngagement += orgScore * multiplier * decayFactor;
-      uniqueOrgs.add(s.orgId);
     }
 
     const engagementScore = Math.min(100, Math.round((rawEngagement / ENGAGEMENT_CAP) * 100));
