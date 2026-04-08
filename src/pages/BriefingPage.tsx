@@ -14,12 +14,7 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 export default function BriefingPage() {
   const { contacts, signals, settings } = useStore();
-  const connections = useConnectionStore((s) => s.connections);
-  const navigate = useNavigate();
   const today = new Date('2026-04-07');
-
-  const allConnected = connections.every(c => c.status === 'connected');
-  const hasError = connections.some(c => c.status === 'error');
 
   const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && c.source === 'auto' && !c.lemlistCampaignId), [contacts]);
   const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts]);
