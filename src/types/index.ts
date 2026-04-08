@@ -20,6 +20,7 @@ export interface WatchlistOrg {
   isActive: boolean;
   postsScrapedCount: number;
   lastScrapedAt: string | null;
+  rank: number;
 }
 
 export interface Signal {
@@ -65,6 +66,12 @@ export interface Contact {
   lemlistPushedAt: string | null;
   lastContactedAt: string | null;
   notes: string;
+  // Score breakdown
+  engagementScore: number;
+  keywordScore: number;
+  crossSignalScore: number;
+  enrichmentScore: number;
+  diversityScore: number;
 }
 
 export interface AppSettings {
@@ -76,6 +83,37 @@ export interface AppSettings {
   domainConfig: Record<Domain, { name: string; color: string; description: string }>;
   profileName: string;
   profileEmail: string;
+  scoreWeights: {
+    engagement: number;
+    profileKeywords: number;
+    crossSignal: number;
+    enrichment: number;
+    orgDiversity: number;
+  };
+  warmThreshold: number;
+  decayDaysUntilCold: number;
+  positiveKeywords: string[];
+  negativeKeywords: string[];
+  hubspotMapping: {
+    leadSource: string;
+    lifecycleStage: string;
+    contactOwner: string;
+  };
+  lemlistConfig: {
+    dailySendLimit: number;
+    defaultCampaignId: string;
+  };
+  appearance: {
+    theme: 'dark' | 'light' | 'system';
+    compactMode: boolean;
+    accentColor: 'coral' | 'blue' | 'emerald' | 'amber' | 'purple';
+  };
+  notifications: {
+    newHotLead: boolean;
+    enrichmentFailed: boolean;
+    connectionDown: boolean;
+    dailyDigest: boolean;
+  };
 }
 
 export interface LemlistCampaign {

@@ -27,59 +27,59 @@ function sig(
 // ── Watchlist Organizations (45) ─────────────────────
 export const SEED_ORGS: WatchlistOrg[] = [
   // Kunst — Kern (5)
-  { id: 'k01', name: 'KMSKA', linkedinUrl: 'https://linkedin.com/company/kmska', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 42, lastScrapedAt: daysAgo(0) },
-  { id: 'k02', name: 'M HKA', linkedinUrl: 'https://linkedin.com/company/muhka', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 38, lastScrapedAt: daysAgo(0) },
-  { id: 'k03', name: 'Bozar', linkedinUrl: 'https://linkedin.com/company/bozar', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 51, lastScrapedAt: daysAgo(0) },
-  { id: 'k04', name: 'Wiels', linkedinUrl: 'https://linkedin.com/company/wiels', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 29, lastScrapedAt: daysAgo(1) },
-  { id: 'k05', name: 'S.M.A.K.', linkedinUrl: 'https://linkedin.com/company/smak', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 34, lastScrapedAt: daysAgo(0) },
+  { id: 'k01', name: 'KMSKA', linkedinUrl: 'https://linkedin.com/company/kmska', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 42, lastScrapedAt: daysAgo(0), rank: 1 },
+  { id: 'k02', name: 'M HKA', linkedinUrl: 'https://linkedin.com/company/muhka', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 38, lastScrapedAt: daysAgo(0), rank: 2 },
+  { id: 'k03', name: 'Bozar', linkedinUrl: 'https://linkedin.com/company/bozar', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 51, lastScrapedAt: daysAgo(0), rank: 3 },
+  { id: 'k04', name: 'Wiels', linkedinUrl: 'https://linkedin.com/company/wiels', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 29, lastScrapedAt: daysAgo(1), rank: 4 },
+  { id: 'k05', name: 'S.M.A.K.', linkedinUrl: 'https://linkedin.com/company/smak', domain: 'kunst', tier: 'kern', isActive: true, postsScrapedCount: 34, lastScrapedAt: daysAgo(0), rank: 5 },
   // Kunst — Extended (5)
-  { id: 'k06', name: 'Mu.ZEE', linkedinUrl: 'https://linkedin.com/company/muzee', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 22, lastScrapedAt: daysAgo(1) },
-  { id: 'k07', name: 'Design Museum Gent', linkedinUrl: 'https://linkedin.com/company/design-museum-gent', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 19, lastScrapedAt: daysAgo(2) },
-  { id: 'k08', name: 'BRAFA', linkedinUrl: 'https://linkedin.com/company/brafa', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 15, lastScrapedAt: daysAgo(1) },
-  { id: 'k09', name: 'Art Brussels', linkedinUrl: 'https://linkedin.com/company/art-brussels', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 17, lastScrapedAt: daysAgo(3) },
-  { id: 'k10', name: 'Galerij De Zwarte Panter', linkedinUrl: 'https://linkedin.com/company/de-zwarte-panter', domain: 'kunst', tier: 'extended', isActive: false, postsScrapedCount: 8, lastScrapedAt: daysAgo(7) },
+  { id: 'k06', name: 'Mu.ZEE', linkedinUrl: 'https://linkedin.com/company/muzee', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 22, lastScrapedAt: daysAgo(1), rank: 1 },
+  { id: 'k07', name: 'Design Museum Gent', linkedinUrl: 'https://linkedin.com/company/design-museum-gent', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 19, lastScrapedAt: daysAgo(2), rank: 2 },
+  { id: 'k08', name: 'BRAFA', linkedinUrl: 'https://linkedin.com/company/brafa', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 15, lastScrapedAt: daysAgo(1), rank: 3 },
+  { id: 'k09', name: 'Art Brussels', linkedinUrl: 'https://linkedin.com/company/art-brussels', domain: 'kunst', tier: 'extended', isActive: true, postsScrapedCount: 17, lastScrapedAt: daysAgo(3), rank: 4 },
+  { id: 'k10', name: 'Galerij De Zwarte Panter', linkedinUrl: 'https://linkedin.com/company/de-zwarte-panter', domain: 'kunst', tier: 'extended', isActive: false, postsScrapedCount: 8, lastScrapedAt: daysAgo(7), rank: 5 },
   // Kunst — Peripheral (5)
-  { id: 'k11', name: 'Tim Van Laere Gallery', linkedinUrl: 'https://linkedin.com/company/tim-van-laere-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(2) },
-  { id: 'k12', name: 'Zeno X Gallery', linkedinUrl: 'https://linkedin.com/company/zeno-x-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(3) },
-  { id: 'k13', name: 'Galerie Nathalie Obadia', linkedinUrl: 'https://linkedin.com/company/galerie-nathalie-obadia', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(4) },
-  { id: 'k14', name: 'Irène Laub Gallery', linkedinUrl: 'https://linkedin.com/company/irene-laub-gallery', domain: 'kunst', tier: 'peripheral', isActive: false, postsScrapedCount: 5, lastScrapedAt: daysAgo(10) },
-  { id: 'k15', name: 'Hopstreet Gallery', linkedinUrl: 'https://linkedin.com/company/hopstreet-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 6, lastScrapedAt: daysAgo(5) },
+  { id: 'k11', name: 'Tim Van Laere Gallery', linkedinUrl: 'https://linkedin.com/company/tim-van-laere-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(2), rank: 1 },
+  { id: 'k12', name: 'Zeno X Gallery', linkedinUrl: 'https://linkedin.com/company/zeno-x-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(3), rank: 2 },
+  { id: 'k13', name: 'Galerie Nathalie Obadia', linkedinUrl: 'https://linkedin.com/company/galerie-nathalie-obadia', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(4), rank: 3 },
+  { id: 'k14', name: 'Irène Laub Gallery', linkedinUrl: 'https://linkedin.com/company/irene-laub-gallery', domain: 'kunst', tier: 'peripheral', isActive: false, postsScrapedCount: 5, lastScrapedAt: daysAgo(10), rank: 4 },
+  { id: 'k15', name: 'Hopstreet Gallery', linkedinUrl: 'https://linkedin.com/company/hopstreet-gallery', domain: 'kunst', tier: 'peripheral', isActive: true, postsScrapedCount: 6, lastScrapedAt: daysAgo(5), rank: 5 },
   // Beleggen — Kern (5)
-  { id: 'b01', name: 'Bank Delen', linkedinUrl: 'https://linkedin.com/company/bank-delen', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 55, lastScrapedAt: daysAgo(0) },
-  { id: 'b02', name: 'Degroof Petercam', linkedinUrl: 'https://linkedin.com/company/degroof-petercam', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 48, lastScrapedAt: daysAgo(0) },
-  { id: 'b03', name: 'Econopolis', linkedinUrl: 'https://linkedin.com/company/econopolis', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 37, lastScrapedAt: daysAgo(0) },
-  { id: 'b04', name: 'Ackermans & van Haaren', linkedinUrl: 'https://linkedin.com/company/ackermans-van-haaren', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 44, lastScrapedAt: daysAgo(1) },
-  { id: 'b05', name: 'GBL', linkedinUrl: 'https://linkedin.com/company/gbl', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 31, lastScrapedAt: daysAgo(0) },
+  { id: 'b01', name: 'Bank Delen', linkedinUrl: 'https://linkedin.com/company/bank-delen', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 55, lastScrapedAt: daysAgo(0), rank: 1 },
+  { id: 'b02', name: 'Degroof Petercam', linkedinUrl: 'https://linkedin.com/company/degroof-petercam', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 48, lastScrapedAt: daysAgo(0), rank: 2 },
+  { id: 'b03', name: 'Econopolis', linkedinUrl: 'https://linkedin.com/company/econopolis', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 37, lastScrapedAt: daysAgo(0), rank: 3 },
+  { id: 'b04', name: 'Ackermans & van Haaren', linkedinUrl: 'https://linkedin.com/company/ackermans-van-haaren', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 44, lastScrapedAt: daysAgo(1), rank: 4 },
+  { id: 'b05', name: 'GBL', linkedinUrl: 'https://linkedin.com/company/gbl', domain: 'beleggen', tier: 'kern', isActive: true, postsScrapedCount: 31, lastScrapedAt: daysAgo(0), rank: 5 },
   // Beleggen — Extended (5)
-  { id: 'b06', name: 'Gimv', linkedinUrl: 'https://linkedin.com/company/gimv', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 26, lastScrapedAt: daysAgo(1) },
-  { id: 'b07', name: 'Sofina', linkedinUrl: 'https://linkedin.com/company/sofina', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 23, lastScrapedAt: daysAgo(1) },
-  { id: 'b08', name: 'Brederode', linkedinUrl: 'https://linkedin.com/company/brederode', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 14, lastScrapedAt: daysAgo(3) },
-  { id: 'b09', name: 'Quest for Growth', linkedinUrl: 'https://linkedin.com/company/quest-for-growth', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(2) },
-  { id: 'b10', name: 'KBC Private Banking', linkedinUrl: 'https://linkedin.com/company/kbc-private-banking', domain: 'beleggen', tier: 'extended', isActive: false, postsScrapedCount: 18, lastScrapedAt: daysAgo(6) },
+  { id: 'b06', name: 'Gimv', linkedinUrl: 'https://linkedin.com/company/gimv', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 26, lastScrapedAt: daysAgo(1), rank: 1 },
+  { id: 'b07', name: 'Sofina', linkedinUrl: 'https://linkedin.com/company/sofina', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 23, lastScrapedAt: daysAgo(1), rank: 2 },
+  { id: 'b08', name: 'Brederode', linkedinUrl: 'https://linkedin.com/company/brederode', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 14, lastScrapedAt: daysAgo(3), rank: 3 },
+  { id: 'b09', name: 'Quest for Growth', linkedinUrl: 'https://linkedin.com/company/quest-for-growth', domain: 'beleggen', tier: 'extended', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(2), rank: 4 },
+  { id: 'b10', name: 'KBC Private Banking', linkedinUrl: 'https://linkedin.com/company/kbc-private-banking', domain: 'beleggen', tier: 'extended', isActive: false, postsScrapedCount: 18, lastScrapedAt: daysAgo(6), rank: 5 },
   // Beleggen — Peripheral (5)
-  { id: 'b11', name: 'Value Square', linkedinUrl: 'https://linkedin.com/company/value-square', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(3) },
-  { id: 'b12', name: 'Capricorn Partners', linkedinUrl: 'https://linkedin.com/company/capricorn-partners', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(4) },
-  { id: 'b13', name: 'Waterland', linkedinUrl: 'https://linkedin.com/company/waterland', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 12, lastScrapedAt: daysAgo(2) },
-  { id: 'b14', name: 'Vendis Capital', linkedinUrl: 'https://linkedin.com/company/vendis-capital', domain: 'beleggen', tier: 'peripheral', isActive: false, postsScrapedCount: 5, lastScrapedAt: daysAgo(9) },
-  { id: 'b15', name: 'Belfius Private Banking', linkedinUrl: 'https://linkedin.com/company/belfius-private-banking', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 10, lastScrapedAt: daysAgo(3) },
+  { id: 'b11', name: 'Value Square', linkedinUrl: 'https://linkedin.com/company/value-square', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(3), rank: 1 },
+  { id: 'b12', name: 'Capricorn Partners', linkedinUrl: 'https://linkedin.com/company/capricorn-partners', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(4), rank: 2 },
+  { id: 'b13', name: 'Waterland', linkedinUrl: 'https://linkedin.com/company/waterland', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 12, lastScrapedAt: daysAgo(2), rank: 3 },
+  { id: 'b14', name: 'Vendis Capital', linkedinUrl: 'https://linkedin.com/company/vendis-capital', domain: 'beleggen', tier: 'peripheral', isActive: false, postsScrapedCount: 5, lastScrapedAt: daysAgo(9), rank: 4 },
+  { id: 'b15', name: 'Belfius Private Banking', linkedinUrl: 'https://linkedin.com/company/belfius-private-banking', domain: 'beleggen', tier: 'peripheral', isActive: true, postsScrapedCount: 10, lastScrapedAt: daysAgo(3), rank: 5 },
   // Luxe — Kern (5)
-  { id: 'l01', name: 'Zoute Grand Prix', linkedinUrl: 'https://linkedin.com/company/zoute-grand-prix', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 33, lastScrapedAt: daysAgo(0) },
-  { id: 'l02', name: 'Knokke Hippique', linkedinUrl: 'https://linkedin.com/company/knokke-hippique', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 28, lastScrapedAt: daysAgo(1) },
-  { id: 'l03', name: 'Patek Philippe Belgium', linkedinUrl: 'https://linkedin.com/company/patek-philippe-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 21, lastScrapedAt: daysAgo(0) },
-  { id: 'l04', name: 'Breguet Belgium', linkedinUrl: 'https://linkedin.com/company/breguet-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 18, lastScrapedAt: daysAgo(1) },
-  { id: 'l05', name: 'Maison Margiela Belgium', linkedinUrl: 'https://linkedin.com/company/maison-margiela-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 25, lastScrapedAt: daysAgo(0) },
+  { id: 'l01', name: 'Zoute Grand Prix', linkedinUrl: 'https://linkedin.com/company/zoute-grand-prix', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 33, lastScrapedAt: daysAgo(0), rank: 1 },
+  { id: 'l02', name: 'Knokke Hippique', linkedinUrl: 'https://linkedin.com/company/knokke-hippique', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 28, lastScrapedAt: daysAgo(1), rank: 2 },
+  { id: 'l03', name: 'Patek Philippe Belgium', linkedinUrl: 'https://linkedin.com/company/patek-philippe-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 21, lastScrapedAt: daysAgo(0), rank: 3 },
+  { id: 'l04', name: 'Breguet Belgium', linkedinUrl: 'https://linkedin.com/company/breguet-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 18, lastScrapedAt: daysAgo(1), rank: 4 },
+  { id: 'l05', name: 'Maison Margiela Belgium', linkedinUrl: 'https://linkedin.com/company/maison-margiela-belgium', domain: 'luxe', tier: 'kern', isActive: true, postsScrapedCount: 25, lastScrapedAt: daysAgo(0), rank: 5 },
   // Luxe — Extended (5)
-  { id: 'l06', name: "Sotheby's Realty Belgium", linkedinUrl: 'https://linkedin.com/company/sothebys-realty-belgium', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 16, lastScrapedAt: daysAgo(2) },
-  { id: 'l07', name: 'Bentley Antwerp', linkedinUrl: 'https://linkedin.com/company/bentley-antwerp', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 13, lastScrapedAt: daysAgo(2) },
-  { id: 'l08', name: 'Richard Mille Belgium', linkedinUrl: 'https://linkedin.com/company/richard-mille-belgium', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 10, lastScrapedAt: daysAgo(3) },
-  { id: 'l09', name: 'Graff Antwerp', linkedinUrl: 'https://linkedin.com/company/graff-antwerp', domain: 'luxe', tier: 'extended', isActive: false, postsScrapedCount: 6, lastScrapedAt: daysAgo(8) },
-  { id: 'l10', name: 'Maison Ullens', linkedinUrl: 'https://linkedin.com/company/maison-ullens', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 8, lastScrapedAt: daysAgo(4) },
+  { id: 'l06', name: "Sotheby's Realty Belgium", linkedinUrl: 'https://linkedin.com/company/sothebys-realty-belgium', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 16, lastScrapedAt: daysAgo(2), rank: 1 },
+  { id: 'l07', name: 'Bentley Antwerp', linkedinUrl: 'https://linkedin.com/company/bentley-antwerp', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 13, lastScrapedAt: daysAgo(2), rank: 2 },
+  { id: 'l08', name: 'Richard Mille Belgium', linkedinUrl: 'https://linkedin.com/company/richard-mille-belgium', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 10, lastScrapedAt: daysAgo(3), rank: 3 },
+  { id: 'l09', name: 'Graff Antwerp', linkedinUrl: 'https://linkedin.com/company/graff-antwerp', domain: 'luxe', tier: 'extended', isActive: false, postsScrapedCount: 6, lastScrapedAt: daysAgo(8), rank: 4 },
+  { id: 'l10', name: 'Maison Ullens', linkedinUrl: 'https://linkedin.com/company/maison-ullens', domain: 'luxe', tier: 'extended', isActive: true, postsScrapedCount: 8, lastScrapedAt: daysAgo(4), rank: 5 },
   // Luxe — Peripheral (5)
-  { id: 'l11', name: 'Hotel La Réserve Knokke', linkedinUrl: 'https://linkedin.com/company/la-reserve-knokke', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(3) },
-  { id: 'l12', name: 'Restaurant Bartholomeus', linkedinUrl: 'https://linkedin.com/company/bartholomeus', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 5, lastScrapedAt: daysAgo(5) },
-  { id: 'l13', name: 'La Durée Belgium', linkedinUrl: 'https://linkedin.com/company/laduree-belgium', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(2) },
-  { id: 'l14', name: 'Delvaux', linkedinUrl: 'https://linkedin.com/company/delvaux', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(1) },
-  { id: 'l15', name: 'De Mangerie', linkedinUrl: 'https://linkedin.com/company/de-mangerie', domain: 'luxe', tier: 'peripheral', isActive: false, postsScrapedCount: 3, lastScrapedAt: daysAgo(12) },
+  { id: 'l11', name: 'Hotel La Réserve Knokke', linkedinUrl: 'https://linkedin.com/company/la-reserve-knokke', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 7, lastScrapedAt: daysAgo(3), rank: 1 },
+  { id: 'l12', name: 'Restaurant Bartholomeus', linkedinUrl: 'https://linkedin.com/company/bartholomeus', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 5, lastScrapedAt: daysAgo(5), rank: 2 },
+  { id: 'l13', name: 'La Durée Belgium', linkedinUrl: 'https://linkedin.com/company/laduree-belgium', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 9, lastScrapedAt: daysAgo(2), rank: 3 },
+  { id: 'l14', name: 'Delvaux', linkedinUrl: 'https://linkedin.com/company/delvaux', domain: 'luxe', tier: 'peripheral', isActive: true, postsScrapedCount: 11, lastScrapedAt: daysAgo(1), rank: 4 },
+  { id: 'l15', name: 'De Mangerie', linkedinUrl: 'https://linkedin.com/company/de-mangerie', domain: 'luxe', tier: 'peripheral', isActive: false, postsScrapedCount: 3, lastScrapedAt: daysAgo(12), rank: 5 },
 ];
 
 // ── Contact definitions ──────────────────────────────
@@ -121,7 +121,6 @@ const CONTACTS: ContactDef[] = [
 ];
 
 // ── Signal patterns (orgId, days ago, type) ──────────
-// Marie Janssens — 12 signals, 3 domains
 const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; days: number; type: 'like' | 'comment'; comment?: string }[] = [
   // Marie (0) — kunst
   { contactIdx: 0, orgId: 'k01', days: 1, type: 'like' },
@@ -182,7 +181,7 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; days: number; type: 
   { contactIdx: 7, orgId: 'b04', days: 2, type: 'like' },
   { contactIdx: 7, orgId: 'b13', days: 5, type: 'like' },
   { contactIdx: 7, orgId: 'l01', days: 3, type: 'like' },
-  // Cold contacts — ~2 signals each (15 cold = 30 signals, need 31 total for cold to reach 80)
+  // Cold contacts — ~2 signals each
   { contactIdx: 8, orgId: 'k01', days: 4, type: 'like' },
   { contactIdx: 8, orgId: 'k08', days: 8, type: 'like' },
   { contactIdx: 9, orgId: 'b02', days: 3, type: 'like' },
@@ -211,9 +210,9 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; days: number; type: 
   { contactIdx: 20, orgId: 'l10', days: 7, type: 'like' },
   { contactIdx: 21, orgId: 'k01', days: 6, type: 'comment', comment: 'Prachtige collectie!' },
   { contactIdx: 21, orgId: 'k09', days: 11, type: 'like' },
-  // Manual contacts get kern-weighted manual signals
-  { contactIdx: 22, orgId: 'k08', days: 0, type: 'like' }, // Hendrik at BRAFA
-  { contactIdx: 23, orgId: 'b01', days: 0, type: 'like' }, // Annelies — beleggen
+  // Manual contacts
+  { contactIdx: 22, orgId: 'k08', days: 0, type: 'like' },
+  { contactIdx: 23, orgId: 'b01', days: 0, type: 'like' },
 ];
 
 // ── Build functions ──────────────────────────────────
@@ -248,17 +247,9 @@ function emptyDomains(): Contact['domains'] {
   };
 }
 
-function computeStatus(activeDomainCount: number, totalScore: number, hotThreshold: number): Contact['status'] {
-  if (activeDomainCount >= 3) return 'hot';
-  if (activeDomainCount === 2 && totalScore >= hotThreshold) return 'hot';
-  if (activeDomainCount >= 2) return 'warm';
-  return 'cold';
-}
-
 export function buildContacts(signals: Signal[], hotThreshold: number): Contact[] {
   const contactMap = new Map<string, Contact>();
 
-  // Create base contacts
   CONTACTS.forEach((c, i) => {
     contactMap.set(c.url, {
       id: `contact-${i + 1}`,
@@ -282,10 +273,15 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
       lemlistPushedAt: c.lemlistPushedDaysAgo != null ? daysAgo(c.lemlistPushedDaysAgo) : null,
       lastContactedAt: c.lastContactedDaysAgo != null ? daysAgo(c.lastContactedDaysAgo) : null,
       notes: c.notes ?? '',
+      engagementScore: 0,
+      keywordScore: 0,
+      crossSignalScore: 0,
+      enrichmentScore: 0,
+      diversityScore: 0,
     });
   });
 
-  // Aggregate signals
+  // Aggregate signals into domain presence
   for (const s of signals) {
     const contact = contactMap.get(s.contactLinkedinUrl);
     if (!contact) continue;
@@ -297,13 +293,11 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
     }
   }
 
-  // Compute totals
+  // Basic compute for seed (full recompute happens in store)
+  const domains: Domain[] = ['kunst', 'beleggen', 'luxe'];
   for (const contact of contactMap.values()) {
-    // Manual contacts get kern weight for their tagged domains
-    const domains: Domain[] = ['kunst', 'beleggen', 'luxe'];
     contact.activeDomainCount = domains.filter(d => contact.domains[d].signalCount > 0).length;
     contact.totalScore = domains.reduce((sum, d) => sum + contact.domains[d].weightedScore, 0);
-    contact.status = computeStatus(contact.activeDomainCount, contact.totalScore, hotThreshold);
   }
 
   return Array.from(contactMap.values());
@@ -319,7 +313,7 @@ export const SEED_CAMPAIGNS: LemlistCampaign[] = [
 
 // ── Default Settings ─────────────────────────────────
 export const DEFAULT_SETTINGS: AppSettings = {
-  hotScoreThreshold: 15,
+  hotScoreThreshold: 70,
   tierWeights: { kern: 3, extended: 2, peripheral: 1 },
   manualAddWeight: 3,
   recencyDecay: false,
@@ -331,4 +325,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   profileName: 'Rubey',
   profileEmail: 'rubey@merciervanderlinden.be',
+  scoreWeights: { engagement: 30, profileKeywords: 25, crossSignal: 25, enrichment: 10, orgDiversity: 10 },
+  warmThreshold: 40,
+  decayDaysUntilCold: 30,
+  positiveKeywords: ['kunst', 'investeren', 'collectie', 'galerie', 'beleggen', 'portefeuille', 'oldtimer', 'classic car', 'luxe', 'vermogensbeheer'],
+  negativeKeywords: ['stage', 'student', 'gratis', 'goedkoop', 'crypto', 'NFT'],
+  hubspotMapping: { leadSource: "Rubey's Big Bold Marketing Machine", lifecycleStage: 'lead', contactOwner: 'jan.van.gaever@rubey.be' },
+  lemlistConfig: { dailySendLimit: 50, defaultCampaignId: '' },
+  appearance: { theme: 'dark', compactMode: false, accentColor: 'coral' },
+  notifications: { newHotLead: true, enrichmentFailed: true, connectionDown: true, dailyDigest: false },
 };
