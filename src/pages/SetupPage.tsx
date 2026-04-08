@@ -57,6 +57,7 @@ function StatusIndicator({ status, message, isService }: { status: ConnectionSta
 
 const SERVICE_LABELS: Record<string, string> = {
   apollo: 'Apollo',
+  dropcontact: 'Dropcontact',
   hubspot: 'HubSpot',
   lemlist: 'Lemlist',
 };
@@ -81,12 +82,14 @@ function ConnectionFields({ id, config, onConfigChange }: { id: string; config: 
       </div>
     );
   }
-  // Apollo, HubSpot, Lemlist – no API key fields, managed in n8n
+  // Apollo, Dropcontact, HubSpot, Lemlist – no API key fields, managed in n8n
   const label = SERVICE_LABELS[id] || id;
+  const isOptional = id === 'dropcontact';
   return (
     <div className="p-3 rounded-lg bg-muted/30 border border-border">
       <p className="text-xs text-muted-foreground">
         API keys worden beheerd in n8n. Configureer je <span className="font-medium text-foreground">{label}</span> credentials in het n8n workflow.
+        {isOptional && <span className="text-amber-400 ml-1">(optioneel)</span>}
       </p>
     </div>
   );
@@ -134,6 +137,7 @@ function SetupWizard() {
   const handleNext = () => { if (currentSetupStep < connections.length - 1) setCurrentStep(currentSetupStep + 1); else completeSetup(); };
   const canProceed = conn.status === 'connected';
   const needsN8n = conn.id !== 'n8n' && conn.id !== 'chrome-extension' && !n8nReady;
+  const isOptionalStep = conn.id === 'dropcontact';
 
   return (
     <div className="space-y-6">
@@ -160,7 +164,10 @@ function SetupWizard() {
 
         <div className="flex-1 bg-card border border-border rounded-xl p-5 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">{conn.name}</h3>
+            <h3 className="text-sm font-semibold text-foreground">
+              {conn.name}
+              {isOptionalStep && <span className="text-[10px] text-amber-400 font-normal ml-2">(optioneel)</span>}
+            </h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">{conn.description}</p>
           </div>
 
@@ -176,9 +183,9 @@ function SetupWizard() {
           <div className="flex items-center gap-3">
             <button onClick={handleTest} disabled={conn.status === 'testing' || needsN8n}
               className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test verbinding'}
+              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test verbinding'}
             </button>
-            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'hubspot', 'lemlist'].includes(conn.id)} />
+            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id)} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
