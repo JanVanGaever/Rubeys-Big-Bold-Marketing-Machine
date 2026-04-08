@@ -72,6 +72,9 @@ export interface Contact {
   crossSignalScore: number;
   enrichmentScore: number;
   diversityScore: number;
+  // Score delta tracking
+  previousScore: number | null;
+  scoreChangedAt: string | null;
 }
 
 export interface AppSettings {
@@ -116,7 +119,26 @@ export interface AppSettings {
   };
 }
 
+export interface ImportRecord {
+  id: string;
+  date: string;
+  type: 'CSV' | 'Phantombuster';
+  records: number;
+  imported: number;
+  duplicates: number;
+  errors: number;
+  status: 'success' | 'partial' | 'error';
+}
+
 export interface LemlistCampaign {
+  id: string;
+  name: string;
+  status: 'active' | 'paused' | 'completed';
+  leadsCount: number;
+  emailsSent: number;
+  opens: number;
+  replies: number;
+}
   id: string;
   name: string;
   status: 'active' | 'paused' | 'completed';
