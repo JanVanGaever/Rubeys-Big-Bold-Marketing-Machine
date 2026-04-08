@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send } from 'lucide-react';
+import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Users, Upload } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ALL_DOMAINS } from '@/types';
 import type { Contact } from '@/types';
@@ -37,6 +38,7 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact } = useStore();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sort, setSort] = useState<string>('score');
