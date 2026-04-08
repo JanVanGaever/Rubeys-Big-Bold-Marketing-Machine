@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Target, Tags, Database, Send, Palette, Bell, ChevronDown, X, Plus, CheckCircle2, AlertTriangle, Moon, Sun, Monitor, Download } from 'lucide-react';
+import { DEFAULT_SETTINGS } from '@/lib/seed-data';
 import { useStore } from '@/store/useStore';
 import { useConnectionStore } from '@/stores/connectionStore';
 
@@ -135,10 +136,10 @@ function SliderRow({ label, value, min, max, onChange, suffix, badge }: {
 
 function ScoringSection() {
   const { settings, updateScoreWeights, setThreshold, setDecayDays } = useStore();
-  const scoreWeights = settings.scoreWeights ?? { engagement: 30, profileKeywords: 25, crossSignal: 20, enrichment: 15, orgDiversity: 10 };
-  const hotScoreThreshold = settings.hotScoreThreshold ?? 70;
-  const warmThreshold = settings.warmThreshold ?? 40;
-  const decayDaysUntilCold = settings.decayDaysUntilCold ?? 90;
+  const scoreWeights = settings.scoreWeights ?? DEFAULT_SETTINGS.scoreWeights;
+  const hotScoreThreshold = settings.hotScoreThreshold ?? DEFAULT_SETTINGS.hotScoreThreshold;
+  const warmThreshold = settings.warmThreshold ?? DEFAULT_SETTINGS.warmThreshold;
+  const decayDaysUntilCold = settings.decayDaysUntilCold ?? DEFAULT_SETTINGS.decayDaysUntilCold;
   const total = Object.values(scoreWeights).reduce((a, b) => a + b, 0);
   const valid = total === 100;
 
@@ -187,8 +188,8 @@ function ScoringSection() {
 
 function KeywordsSection() {
   const { settings, addKeyword, removeKeyword } = useStore();
-  const positiveKeywords = settings.positiveKeywords ?? [];
-  const negativeKeywords = settings.negativeKeywords ?? [];
+  const positiveKeywords = settings.positiveKeywords ?? DEFAULT_SETTINGS.positiveKeywords;
+  const negativeKeywords = settings.negativeKeywords ?? DEFAULT_SETTINGS.negativeKeywords;
   const [input, setInput] = useState('');
   const [type, setType] = useState<'positive' | 'negative'>('positive');
 
@@ -280,7 +281,7 @@ function KeywordsSection() {
 
 function HubSpotSection() {
   const { settings, updateHubSpotMapping } = useStore();
-  const { hubspotMapping } = settings;
+  const hubspotMapping = settings.hubspotMapping ?? DEFAULT_SETTINGS.hubspotMapping;
 
   return (
     <ConnectionGuard toolId="hubspot" toolName="HubSpot">
@@ -321,7 +322,7 @@ function HubSpotSection() {
 
 function LemlistSection() {
   const { settings, updateLemlistConfig } = useStore();
-  const { lemlistConfig } = settings;
+  const lemlistConfig = settings.lemlistConfig ?? DEFAULT_SETTINGS.lemlistConfig;
 
   return (
     <ConnectionGuard toolId="lemlist" toolName="Lemlist">
@@ -355,7 +356,7 @@ function LemlistSection() {
 
 function AppearanceSection() {
   const { settings, updateAppearance } = useStore();
-  const { appearance } = settings;
+  const appearance = settings.appearance ?? DEFAULT_SETTINGS.appearance;
 
   const themes: { value: 'dark' | 'light' | 'system'; label: string; icon: React.ElementType }[] = [
     { value: 'dark', label: 'Dark', icon: Moon },
@@ -421,7 +422,7 @@ function AppearanceSection() {
 
 function NotificationsSection() {
   const { settings, updateNotifications } = useStore();
-  const { notifications } = settings;
+  const notifications = settings.notifications ?? DEFAULT_SETTINGS.notifications;
 
   const items: { key: keyof typeof notifications; label: string }[] = [
     { key: 'newHotLead', label: 'Nieuwe hot lead gedetecteerd' },
