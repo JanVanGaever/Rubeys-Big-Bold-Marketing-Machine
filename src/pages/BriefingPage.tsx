@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles, Mail, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { getDomainColor, getDomainName, getDomainById } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -71,6 +71,12 @@ export default function BriefingPage() {
     );
   }
 
+  const hotCount = contacts.filter(c => c.status === 'hot').length;
+  const warmCount = contacts.filter(c => c.status === 'warm').length;
+  const coldCount = contacts.filter(c => c.status === 'cold').length;
+  const totalContacts = contacts.length;
+  const hotWithEmail = contacts.filter(c => c.status === 'hot' && c.email).length;
+
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -81,6 +87,22 @@ export default function BriefingPage() {
           </h1>
         </div>
       </motion.div>
+
+      {/* Pipeline Bar */}
+      {totalContacts > 0 && (
+        <div className="space-y-2">
+          <div className="h-3 rounded-full overflow-hidden flex bg-muted">
+            {hotCount > 0 && <div className="bg-red-500 transition-all" style={{ width: `${(hotCount / totalContacts) * 100}%` }} />}
+            {warmCount > 0 && <div className="bg-amber-500 transition-all" style={{ width: `${(warmCount / totalContacts) * 100}%` }} />}
+            {coldCount > 0 && <div className="bg-muted-foreground/30 transition-all" style={{ width: `${(coldCount / totalContacts) * 100}%` }} />}
+          </div>
+          <div className="flex gap-4 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />{hotCount} hot</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{warmCount} warm</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/30" />{coldCount} cold</span>
+          </div>
+        </div>
+      )}
 
       {/* KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -119,7 +141,14 @@ export default function BriefingPage() {
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold text-foreground">{c.firstName} {c.lastName}</p>
+                              {c.email ? (
+                                <Mail className="h-3 w-3 text-green-400" />
+                              ) : (
+                                <AlertTriangle className="h-3 w-3 text-amber-400" />
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{c.title} — {c.company}</p>
                           </div>
                           <div className="text-right flex items-center gap-2">
@@ -151,9 +180,15 @@ export default function BriefingPage() {
                         <p className="text-xs text-muted-foreground italic">{item.reason}</p>
                       </div>
                       {item.type === 'new' && (
-                        <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => handlePushToLemlist(c)}>
-                          <Send className="h-3.5 w-3.5" />Push naar Lemlist
-                        </Button>
+                        c.email ? (
+                          <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => handlePushToLemlist(c)}>
+                            <Send className="h-3.5 w-3.5" />Push naar Lemlist
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="shrink-0 text-xs gap-1 text-amber-400 border-amber-500/30" onClick={() => navigate('/enrichment')}>
+                            <AlertTriangle className="h-3.5 w-3.5" />Verrijk
+                          </Button>
+                        )
                       )}
                       {item.type === 'followup' && (
                         <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => window.open(`https://${c.linkedinUrl}`, '_blank')}>
@@ -171,6 +206,11 @@ export default function BriefingPage() {
               );
             })}
           </motion.div>
+          {hotCount > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {hotWithEmail} van {hotCount} hot leads hebben een email adres ({hotCount > 0 ? Math.round((hotWithEmail / hotCount) * 100) : 0}%)
+            </p>
+          )}
         </section>
       )}
 
