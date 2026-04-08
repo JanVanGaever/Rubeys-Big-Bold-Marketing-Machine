@@ -368,15 +368,26 @@ export default function ContactsPage() {
               <div className="space-y-6 text-xs">
                 <div className="space-y-2">
                   {selected.linkedinUrl && (
-                    <a
-                      href={`https://${selected.linkedinUrl}`}
-                      target="_blank"
-                      rel="noopener"
-                      className="flex items-center gap-2 text-blue-400 hover:underline"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      {selected.linkedinUrl}
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://${selected.linkedinUrl}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="flex items-center gap-2 text-blue-400 hover:underline flex-1 min-w-0 truncate"
+                      >
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        {selected.linkedinUrl}
+                      </a>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px] gap-1 shrink-0"
+                        onClick={() => window.open(`https://${selected.linkedinUrl}`, '_blank')}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Open LinkedIn
+                      </Button>
+                    </div>
                   )}
                   {selected.email && (
                     <p className="flex items-center gap-2 text-muted-foreground">
