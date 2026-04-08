@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { WatchlistOrg, Signal, Contact, Domain, AppSettings } from '@/types';
+import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, ImportRecord } from '@/types';
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from '@/lib/seed-data';
 import type { LemlistCampaign } from '@/types';
 
@@ -9,6 +9,7 @@ interface AppState {
   signals: Signal[];
   contacts: Contact[];
   campaigns: LemlistCampaign[];
+  importHistory: ImportRecord[];
   settings: AppSettings;
 
   // Actions
