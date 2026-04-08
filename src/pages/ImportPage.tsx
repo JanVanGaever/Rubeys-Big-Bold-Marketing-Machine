@@ -10,6 +10,8 @@ import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox } fr
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { normalizeLinkedInUrl } from '@/lib/normalize';
+import ConnectionAlert from '@/components/ConnectionAlert';
+import { useConnectionStore } from '@/stores/connectionStore';
 
 const APP_FIELDS = [
   { key: 'linkedinUrl', label: 'LinkedIn URL', required: true },
