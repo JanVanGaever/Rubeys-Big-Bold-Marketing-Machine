@@ -40,6 +40,7 @@ export interface ApiLogEntry {
   status: 'success' | 'error' | 'retrying';
   durationMs: number;
   error?: string;
+  schemaValid?: boolean;
 }
 
 let _apiLog: ApiLogEntry[] = [];

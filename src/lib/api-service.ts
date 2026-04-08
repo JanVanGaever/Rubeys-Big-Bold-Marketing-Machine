@@ -1,5 +1,6 @@
 import { useConnectionStore } from '@/stores/connectionStore';
 import { classifyError, getRetryDelay, addApiLog, type ApiError } from './api-error-handler';
+import { validateResponseSchema } from './webhook-schemas';
 
 export interface ApiResponse<T> {
   success: boolean;
