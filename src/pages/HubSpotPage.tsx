@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import ConnectionAlert from '@/components/ConnectionAlert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,37 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { GitBranch, RefreshCw, CheckCircle, XCircle, Plus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { RefreshCw, CheckCircle, Plus, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-interface SyncRecord {
-  id: string;
-  date: string;
-  direction: 'push' | 'pull';
-  records: number;
-  status: 'success' | 'error';
-}
-
-const MOCK_SYNC_HISTORY: SyncRecord[] = [
-  { id: '1', date: '2026-04-07T11:00:00Z', direction: 'push', records: 5, status: 'success' },
-  { id: '2', date: '2026-04-06T09:00:00Z', direction: 'push', records: 3, status: 'success' },
-  { id: '3', date: '2026-04-05T15:30:00Z', direction: 'pull', records: 8, status: 'success' },
-  { id: '4', date: '2026-04-04T10:00:00Z', direction: 'push', records: 12, status: 'error' },
-  { id: '5', date: '2026-04-03T14:00:00Z', direction: 'push', records: 7, status: 'success' },
-  { id: '6', date: '2026-04-02T09:30:00Z', direction: 'pull', records: 4, status: 'success' },
-  { id: '7', date: '2026-04-01T16:00:00Z', direction: 'push', records: 9, status: 'success' },
-  { id: '8', date: '2026-03-31T11:00:00Z', direction: 'push', records: 6, status: 'success' },
-];
-
-const DEFAULT_MAPPINGS = [
-  { lc: 'firstName', hs: 'firstname' },
-  { lc: 'lastName', hs: 'lastname' },
-  { lc: 'email', hs: 'email' },
-  { lc: 'phone', hs: 'phone' },
-  { lc: 'totalScore', hs: 'lead_score' },
-  { lc: 'status', hs: 'lead_status' },
-  { lc: 'activeDomainCount', hs: 'domain_count' },
-];
+import { useStore } from '@/store/useStore';
+import { syncToHubSpot, pullFromHubSpot, isConnectionReady } from '@/lib/api-service';
+import { toast } from 'sonner';
+import type { Contact } from '@/types';
 
 function relativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -51,21 +26,109 @@ function relativeTime(iso: string) {
 }
 
 export default function HubSpotPage() {
-  const [isConnected] = useState(true);
-  const [syncWho, setSyncWho] = useState('warm_hot');
-  const [syncWhen, setSyncWhen] = useState('auto');
-  const [syncFields, setSyncFields] = useState({
-    nameContact: true, scoreStatus: true, domainTags: true,
-    signalHistory: false, enrichmentData: true, notes: false,
-  });
-  const [mappings, setMappings] = useState(DEFAULT_MAPPINGS);
+  const { contacts, settings, updateSettings, syncHistory, addSyncRecord, addContact, updateContact, recomputeScores, signals } = useStore();
+  const ready = isConnectionReady('hubspot');
 
-  const toggleField = (key: string) => setSyncFields(p => ({ ...p, [key]: !p[key as keyof typeof p] }));
+  const syncRules = settings.hubspotSyncRules;
+  const mappings = settings.hubspotFieldMappings;
 
-  const addMapping = () => setMappings(p => [...p, { lc: '', hs: '' }]);
+  const [syncing, setSyncing] = useState(false);
+  const [pulling, setPulling] = useState(false);
+
+  const setSyncWho = (v: string) => updateSettings({ hubspotSyncRules: { ...syncRules, who: v as any } });
+  const setSyncWhen = (v: string) => updateSettings({ hubspotSyncRules: { ...syncRules, when: v as any } });
+  const toggleField = (key: string) => updateSettings({ hubspotSyncRules: { ...syncRules, fields: { ...syncRules.fields, [key]: !syncRules.fields[key as keyof typeof syncRules.fields] } } });
+
   const updateMapping = (idx: number, field: 'lc' | 'hs', val: string) => {
-    setMappings(p => p.map((m, i) => i === idx ? { ...m, [field]: val } : m));
+    const updated = mappings.map((m, i) => i === idx ? { ...m, [field]: val } : m);
+    updateSettings({ hubspotFieldMappings: updated });
   };
+  const addMapping = () => updateSettings({ hubspotFieldMappings: [...mappings, { lc: '', hs: '' }] });
+
+  // Determine which contacts to sync
+  const syncContacts = useMemo(() => {
+    switch (syncRules.who) {
+      case 'hot': return contacts.filter(c => c.status === 'hot');
+      case 'warm_hot': return contacts.filter(c => c.status === 'warm' || c.status === 'hot');
+      case 'all': return contacts;
+      default: return contacts.filter(c => c.status === 'hot');
+    }
+  }, [contacts, syncRules.who]);
+
+  const buildPayload = (cts: Contact[]) => {
+    return cts.map(c => {
+      const mapped: Record<string, unknown> = {};
+      for (const m of mappings) {
+        if (!m.lc || !m.hs) continue;
+        mapped[m.hs] = (c as any)[m.lc] ?? '';
+      }
+      if (syncRules.fields.domainTags) {
+        const activeDomains = Object.entries(c.domains).filter(([, d]) => d.signalCount > 0).map(([k]) => settings.domainConfig[k as keyof typeof settings.domainConfig]?.name).join(', ');
+        mapped['domain_tags'] = activeDomains;
+      }
+      return mapped;
+    });
+  };
+
+  const handleSync = async () => {
+    if (!ready) { toast.error('HubSpot of n8n niet geconfigureerd'); return; }
+    setSyncing(true);
+    const payload = buildPayload(syncContacts);
+    const result = await syncToHubSpot(payload, mappings);
+    setSyncing(false);
+
+    if (result.success && result.data) {
+      const d = result.data;
+      addSyncRecord({ id: `sync-${Date.now()}`, date: new Date().toISOString(), direction: 'push', records: syncContacts.length, created: d.created, updated: d.updated, errors: d.errors, status: d.errors > 0 ? 'partial' : 'success' });
+      toast.success(`${syncContacts.length} contacten naar HubSpot gesynchroniseerd (${d.created} nieuw, ${d.updated} bijgewerkt)`);
+    } else {
+      addSyncRecord({ id: `sync-${Date.now()}`, date: new Date().toISOString(), direction: 'push', records: syncContacts.length, created: 0, updated: 0, errors: syncContacts.length, status: 'error' });
+      toast.error(result.error || 'Synchronisatie mislukt');
+    }
+  };
+
+  const handlePull = async () => {
+    if (!ready) { toast.error('HubSpot of n8n niet geconfigureerd'); return; }
+    setPulling(true);
+    const result = await pullFromHubSpot();
+    setPulling(false);
+
+    if (result.success && result.data) {
+      let created = 0; let updated = 0;
+      for (const hsContact of result.data) {
+        const reverseMap: Record<string, string> = {};
+        for (const m of mappings) { if (m.lc && m.hs) reverseMap[m.hs] = m.lc; }
+        const mapped: Record<string, any> = {};
+        for (const [k, v] of Object.entries(hsContact)) {
+          if (reverseMap[k]) mapped[reverseMap[k]] = v;
+        }
+        const existing = contacts.find(c => c.email && c.email === mapped.email);
+        if (existing) {
+          updateContact(existing.id, mapped);
+          updated++;
+        } else if (mapped.firstName && mapped.lastName) {
+          addContact({
+            id: `hs-${Date.now()}-${created}`, linkedinUrl: mapped.linkedinUrl || '', firstName: mapped.firstName, lastName: mapped.lastName,
+            title: mapped.title || null, company: mapped.company || null, email: mapped.email || null, phone: mapped.phone || null,
+            location: null, source: 'import', addedAt: new Date().toISOString(),
+            domains: { kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 }, beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 }, luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 } },
+            activeDomainCount: 0, totalScore: 0, status: 'cold', isEnriched: false, enrichedAt: null,
+            lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: '',
+            engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
+            previousScore: null, scoreChangedAt: null, isCustomer: false, customerSince: null,
+          });
+          created++;
+        }
+      }
+      addSyncRecord({ id: `sync-${Date.now()}`, date: new Date().toISOString(), direction: 'pull', records: result.data.length, created, updated, errors: 0, status: 'success' });
+      recomputeScores();
+      toast.success(`${result.data.length} contacten opgehaald uit HubSpot (${created} nieuw, ${updated} bijgewerkt)`);
+    } else {
+      toast.error(result.error || 'Pull mislukt');
+    }
+  };
+
+  const isConnected = ready;
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
@@ -82,12 +145,19 @@ export default function HubSpotPage() {
               <div className={`h-3 w-3 rounded-full ${isConnected ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.4)]' : 'bg-muted-foreground'}`} />
               <div>
                 <p className="text-sm font-semibold text-foreground">{isConnected ? 'Verbonden' : 'Niet verbonden'}</p>
-                <p className="text-[10px] text-muted-foreground">Laatst gesynchroniseerd: {relativeTime('2026-04-07T11:00:00Z')}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {syncHistory.length > 0 ? `Laatst gesynchroniseerd: ${relativeTime(syncHistory[0].date)}` : 'Nog niet gesynchroniseerd'}
+                </p>
               </div>
             </div>
-            <Button size="sm">
-              <RefreshCw className="h-3 w-3 mr-1" /> Synchroniseer nu
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={!ready || pulling} onClick={handlePull}>
+                {pulling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ArrowLeft className="h-3 w-3 mr-1" />} Pull vanuit HubSpot
+              </Button>
+              <Button size="sm" disabled={!ready || syncing} onClick={handleSync}>
+                {syncing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />} Synchroniseer nu ({syncContacts.length})
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -99,7 +169,7 @@ export default function HubSpotPage() {
 
           <div className="space-y-2">
             <Label className="text-xs">Welke contacten synchroniseren?</Label>
-            <RadioGroup value={syncWho} onValueChange={setSyncWho} className="space-y-1">
+            <RadioGroup value={syncRules.who} onValueChange={setSyncWho} className="space-y-1">
               {[
                 { value: 'hot', label: 'Alleen hot leads' },
                 { value: 'warm_hot', label: 'Warm + hot leads' },
@@ -126,7 +196,7 @@ export default function HubSpotPage() {
                 { key: 'notes', label: 'Notities' },
               ].map(f => (
                 <div key={f.key} className="flex items-center gap-2">
-                  <Checkbox checked={syncFields[f.key as keyof typeof syncFields]} onCheckedChange={() => toggleField(f.key)} />
+                  <Checkbox checked={syncRules.fields[f.key as keyof typeof syncRules.fields]} onCheckedChange={() => toggleField(f.key)} />
                   <span className="text-xs">{f.label}</span>
                 </div>
               ))}
@@ -135,7 +205,7 @@ export default function HubSpotPage() {
 
           <div className="space-y-2">
             <Label className="text-xs">Wanneer synchroniseren?</Label>
-            <RadioGroup value={syncWhen} onValueChange={setSyncWhen} className="space-y-1">
+            <RadioGroup value={syncRules.when} onValueChange={setSyncWhen} className="space-y-1">
               {[
                 { value: 'auto', label: 'Automatisch bij statuswijziging (cold→warm, warm→hot)' },
                 { value: 'daily', label: 'Dagelijks' },
@@ -189,39 +259,45 @@ export default function HubSpotPage() {
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-3">
           <h3 className="text-sm font-semibold text-foreground">Sync geschiedenis</h3>
-          <div className="overflow-x-auto rounded border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Datum</TableHead>
-                  <TableHead className="text-xs">Richting</TableHead>
-                  <TableHead className="text-xs">Records</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_SYNC_HISTORY.map(s => (
-                  <TableRow key={s.id}>
-                    <TableCell className="text-xs">{relativeTime(s.date)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-xs">
-                        {s.direction === 'push' ? <ArrowRight className="h-3 w-3 text-primary" /> : <ArrowLeft className="h-3 w-3 text-blue-400" />}
-                        {s.direction === 'push' ? 'Naar HubSpot' : 'Vanuit HubSpot'}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-xs">{s.records}</TableCell>
-                    <TableCell>
-                      {s.status === 'success' ? (
-                        <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Succes</Badge>
-                      ) : (
-                        <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-[10px]">Fout</Badge>
-                      )}
-                    </TableCell>
+          {syncHistory.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">Nog geen synchronisaties uitgevoerd.</p>
+          ) : (
+            <div className="overflow-x-auto rounded border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Datum</TableHead>
+                    <TableHead className="text-xs">Richting</TableHead>
+                    <TableHead className="text-xs">Records</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {syncHistory.map(s => (
+                    <TableRow key={s.id}>
+                      <TableCell className="text-xs">{relativeTime(s.date)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-xs">
+                          {s.direction === 'push' ? <ArrowRight className="h-3 w-3 text-primary" /> : <ArrowLeft className="h-3 w-3 text-blue-400" />}
+                          {s.direction === 'push' ? 'Naar HubSpot' : 'Vanuit HubSpot'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{s.records}</TableCell>
+                      <TableCell>
+                        {s.status === 'success' ? (
+                          <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">Succes</Badge>
+                        ) : s.status === 'partial' ? (
+                          <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px]">Gedeeltelijk</Badge>
+                        ) : (
+                          <Badge className="bg-destructive/20 text-destructive border-destructive/30 text-[10px]">Fout</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
