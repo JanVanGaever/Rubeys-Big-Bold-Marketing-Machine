@@ -41,6 +41,7 @@ export default function SignalsPage() {
         <h1 className="text-2xl font-bold text-foreground">Signalen</h1>
         <p className="text-xs text-muted-foreground">Alle engagement signalen — live feed</p>
       </div>
+      <ConnectionAlert connectionId="chrome-extension" featureName="Signaalverzameling" />
 
       <div className="grid grid-cols-4 gap-3">
         {[
