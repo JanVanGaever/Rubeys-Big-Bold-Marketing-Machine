@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Send, CalendarClock, Eye, ArrowUp, ArrowDown, Rocket, Upload, Sparkles, Mail, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { getDomainColor, getDomainName, getDomainById } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -71,6 +71,12 @@ export default function BriefingPage() {
     );
   }
 
+  const hotCount = contacts.filter(c => c.status === 'hot').length;
+  const warmCount = contacts.filter(c => c.status === 'warm').length;
+  const coldCount = contacts.filter(c => c.status === 'cold').length;
+  const totalContacts = contacts.length;
+  const hotWithEmail = contacts.filter(c => c.status === 'hot' && c.email).length;
+
   return (
     <div className="space-y-8">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -81,6 +87,22 @@ export default function BriefingPage() {
           </h1>
         </div>
       </motion.div>
+
+      {/* Pipeline Bar */}
+      {totalContacts > 0 && (
+        <div className="space-y-2">
+          <div className="h-3 rounded-full overflow-hidden flex bg-muted">
+            {hotCount > 0 && <div className="bg-red-500 transition-all" style={{ width: `${(hotCount / totalContacts) * 100}%` }} />}
+            {warmCount > 0 && <div className="bg-amber-500 transition-all" style={{ width: `${(warmCount / totalContacts) * 100}%` }} />}
+            {coldCount > 0 && <div className="bg-muted-foreground/30 transition-all" style={{ width: `${(coldCount / totalContacts) * 100}%` }} />}
+          </div>
+          <div className="flex gap-4 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />{hotCount} hot</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" />{warmCount} warm</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/30" />{coldCount} cold</span>
+          </div>
+        </div>
+      )}
 
       {/* KPI Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
