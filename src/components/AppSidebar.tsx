@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { Zap, Upload, Users, Eye, Activity, Database, Send, GitBranch, Plug, SlidersHorizontal, BookOpen, AlertTriangle } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useConnectionStore } from '@/stores/connectionStore';
