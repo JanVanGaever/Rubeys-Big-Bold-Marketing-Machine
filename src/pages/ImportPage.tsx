@@ -321,6 +321,8 @@ export default function ImportPage() {
         <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
       </div>
 
+      <ConnectionAlert connectionId="phantombuster" featureName="Phantombuster Import" />
+
       {/* CSV Import */}
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-4">
@@ -410,9 +412,18 @@ export default function ImportPage() {
       {/* Phantombuster Import */}
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <ActivityIcon className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Phantombuster Import</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ActivityIcon className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Phantombuster Import</h3>
+            </div>
+            <div>
+              {phantomConfig?.phantomId ? (
+                <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20">Auto</Badge>
+              ) : (
+                <Badge className="text-[9px] bg-amber-500/15 text-amber-400 border-amber-500/20">Manueel</Badge>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
