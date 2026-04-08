@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import type { WatchlistOrg, Tier } from '@/types';
 import { getDomainColor, getDomainName } from '@/types';
@@ -55,6 +56,25 @@ export default function WatchlistsPage() {
     const newRank = direction === 'up' ? Math.max(1, org.rank - 1) : Math.min(maxRank, org.rank + 1);
     if (newRank !== org.rank) updateOrgRank(org.id, newRank);
   };
+
+  if (watchlistOrgs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+        <Eye className="h-10 w-10 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">Nog geen organisaties op je watchlist</p>
+          <p className="text-xs text-muted-foreground">Voeg organisaties toe om LinkedIn engagement te monitoren.</p>
+        </div>
+        <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" />Organisatie toevoegen
+        </Button>
+        <Link to="/handleiding#watchlists" className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors">
+          Bekijk de handleiding
+        </Link>
+        <AddOrgDialog open={showAdd} onClose={() => setShowAdd(false)} defaultDomain={addDomainId} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Database, CheckCircle, XCircle, Mail, Phone, Zap, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { enrichContact, enrichBatch, isConnectionReady } from '@/lib/api-service';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ function relativeTime(iso: string | null) {
 }
 
 export default function EnrichmentPage() {
+  const navigate = useNavigate();
   const { contacts, settings, updateContact, recomputeScores, enrichmentHistory, addEnrichmentRecord, updateSettings } = useStore();
   const domainDefs = settings.domains ?? [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -134,6 +136,19 @@ export default function EnrichmentPage() {
   }, [enrichmentHistory]);
 
   const maxBar = weeklyData ? Math.max(...weeklyData.map(d => d.count)) : 1;
+
+  if (queue.length === 0 && enrichedAll.length === 0) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+        <Database className="h-10 w-10 text-muted-foreground" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">Nog geen contacten om te verrijken</p>
+          <p className="text-xs text-muted-foreground">Contacten verschijnen hier automatisch zodra ze warm of hot worden.</p>
+        </div>
+        <Button size="sm" onClick={() => navigate('/contacten')}>Bekijk contacten</Button>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
