@@ -8,7 +8,8 @@ import SignalsPage from '@/pages/SignalsPage';
 import EnrichmentPage from '@/pages/EnrichmentPage';
 import CampagnesPage from '@/pages/CampagnesPage';
 import HubSpotPage from '@/pages/HubSpotPage';
-import SettingsPage from '@/pages/SettingsPage';
+import SetupPage from '@/pages/SetupPage';
+import ConfigPage from '@/pages/ConfigPage';
 import HandleidingPage from '@/pages/HandleidingPage';
 import NotFound from '@/pages/NotFound';
 
@@ -25,7 +26,8 @@ export default function App() {
           <Route path="/enrichment" element={<EnrichmentPage />} />
           <Route path="/campagnes" element={<CampagnesPage />} />
           <Route path="/hubspot" element={<HubSpotPage />} />
-          <Route path="/instellingen" element={<SettingsPage />} />
+          <Route path="/settings/setup" element={<SetupPage />} />
+          <Route path="/settings/config" element={<ConfigPage />} />
           <Route path="/handleiding" element={<HandleidingPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
