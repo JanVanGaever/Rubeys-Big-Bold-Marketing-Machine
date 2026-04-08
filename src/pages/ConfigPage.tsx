@@ -135,7 +135,10 @@ function SliderRow({ label, value, min, max, onChange, suffix, badge }: {
 
 function ScoringSection() {
   const { settings, updateScoreWeights, setThreshold, setDecayDays } = useStore();
-  const { scoreWeights, hotScoreThreshold, warmThreshold, decayDaysUntilCold } = settings;
+  const scoreWeights = settings.scoreWeights ?? { engagement: 30, profileKeywords: 25, crossSignal: 20, enrichment: 15, orgDiversity: 10 };
+  const hotScoreThreshold = settings.hotScoreThreshold ?? 70;
+  const warmThreshold = settings.warmThreshold ?? 40;
+  const decayDaysUntilCold = settings.decayDaysUntilCold ?? 90;
   const total = Object.values(scoreWeights).reduce((a, b) => a + b, 0);
   const valid = total === 100;
 
