@@ -311,6 +311,12 @@ export default function ImportPage() {
       status: skippedSignals > 0 && newSignals === 0 ? 'error' : skippedSignals > 0 ? 'partial' : 'success',
     });
 
+    // Update last signal timestamp
+    useConnectionStore.getState().setConnectionConfig('phantombuster', {
+      ...(useConnectionStore.getState().connections.find(c => c.id === 'phantombuster')?.config || {}),
+      lastSignalReceivedAt: new Date().toISOString(),
+    });
+
     toast.success(`Import voltooid: ${newContacts} nieuwe contacten, ${newSignals} signalen`);
   };
 
