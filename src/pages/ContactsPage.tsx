@@ -450,6 +450,54 @@ export default function ContactsPage() {
                   })()}
                 </div>
 
+                {/* 30-day activity mini-chart */}
+                {(() => {
+                  const contactSignals = signals
+                    .filter((s) => s.contactLinkedinUrl === selected.linkedinUrl)
+                    .sort((a, b) => b.detectedAt.localeCompare(a.detectedAt));
+                  const now = Date.now();
+                  const dayMs = 86400000;
+                  const dayBuckets: Record<number, Set<string>> = {};
+                  for (const s of contactSignals) {
+                    const daysAgo = Math.floor((now - new Date(s.detectedAt).getTime()) / dayMs);
+                    if (daysAgo >= 0 && daysAgo < 30) {
+                      if (!dayBuckets[daysAgo]) dayBuckets[daysAgo] = new Set();
+                      dayBuckets[daysAgo].add(s.domain);
+                    }
+                  }
+                  return (
+                    <div className="space-y-1">
+                      <h3 className="font-semibold text-foreground text-sm">Activiteit (30 dagen)</h3>
+                      <svg viewBox="0 0 300 24" className="w-full h-6" preserveAspectRatio="none">
+                        <rect x="0" y="0" width="300" height="24" rx="3" className="fill-muted/50" />
+                        {Array.from({ length: 30 }, (_, i) => {
+                          const day = 29 - i;
+                          const domains = dayBuckets[day];
+                          if (!domains) return null;
+                          const domArr = Array.from(domains);
+                          const barHeight = Math.min(20, domArr.length * 8);
+                          return domArr.map((domId, j) => (
+                            <rect
+                              key={`${i}-${j}`}
+                              x={i * 10}
+                              y={24 - (j + 1) * Math.min(8, 20 / domArr.length)}
+                              width={8}
+                              height={Math.min(8, 20 / domArr.length) - 1}
+                              rx={1}
+                              fill={getDomainColor(domainDefs, domId)}
+                              opacity={0.85}
+                            />
+                          ));
+                        })}
+                      </svg>
+                      <div className="flex justify-between text-[9px] text-muted-foreground/50">
+                        <span>30d geleden</span>
+                        <span>vandaag</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Signal timeline */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground text-sm">Signaal tijdlijn</h3>
@@ -476,14 +524,33 @@ export default function ContactsPage() {
                       ))}
                   </div>
                 </div>
+
+                {/* Context-aware action buttons */}
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs flex-1">
-                    Verrijk via Apollo
-                  </Button>
-                  <Button size="sm" className="text-xs flex-1">
-                    Push naar Lemlist
-                  </Button>
+                  {selected.isEnriched ? (
+                    <Button size="sm" variant="outline" className="text-xs flex-1" onClick={() => navigate('/enrichment')}>
+                      Opnieuw verrijken
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="text-xs flex-1" onClick={() => navigate('/enrichment')}>
+                      {selected.email ? 'Verrijk via Apollo' : 'Verrijk eerst'}
+                    </Button>
+                  )}
+                  {selected.lemlistCampaignId ? (
+                    <Button size="sm" variant="outline" className="text-xs flex-1" disabled>
+                      Al in campagne
+                    </Button>
+                  ) : selected.email ? (
+                    <Button size="sm" className="text-xs flex-1">
+                      Push naar Lemlist
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="text-xs flex-1" disabled title="Geen email beschikbaar">
+                      Push naar Lemlist
+                    </Button>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <h3 className="font-semibold text-foreground text-sm">Notities</h3>
                   <Textarea
