@@ -218,6 +218,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       },
       activeDomainCount: 0, totalScore: 0, status: 'cold',
       isEnriched: false, enrichedAt: null, lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: form.notes,
+      engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
     };
     addContact(newContact);
     setForm({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false }, notes: '' });

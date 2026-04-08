@@ -174,6 +174,11 @@ export default function ImportPage() {
           lemlistPushedAt: null,
           lastContactedAt: null,
           notes: getVal('notes') || '',
+          engagementScore: 0,
+          keywordScore: 0,
+          crossSignalScore: 0,
+          enrichmentScore: 0,
+          diversityScore: 0,
         });
         existingUrls.add(url);
         imported++;

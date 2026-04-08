@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Target, Tags, Database, Send, Palette, Bell, ChevronDown, X, Plus, CheckCircle2, AlertTriangle, Circle, Moon, Sun, Monitor, Download } from 'lucide-react';
-import { useConfigStore } from '@/stores/configStore';
-import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
+import { Target, Tags, Database, Send, Palette, Bell, ChevronDown, X, Plus, CheckCircle2, AlertTriangle, Moon, Sun, Monitor, Download } from 'lucide-react';
+import { useStore } from '@/store/useStore';
+import { useConnectionStore } from '@/stores/connectionStore';
 
 /* ─── Toggle Switch ─── */
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -134,7 +134,8 @@ function SliderRow({ label, value, min, max, onChange, suffix, badge }: {
 /* ═══ SECTIONS ═══ */
 
 function ScoringSection() {
-  const { scoreWeights, updateScoreWeights, hotThreshold, warmThreshold, setThreshold, decayDaysUntilCold, setDecayDays } = useConfigStore();
+  const { settings, updateScoreWeights, setThreshold, setDecayDays } = useStore();
+  const { scoreWeights, hotScoreThreshold, warmThreshold, decayDaysUntilCold } = settings;
   const total = Object.values(scoreWeights).reduce((a, b) => a + b, 0);
   const valid = total === 100;
 
@@ -163,7 +164,7 @@ function ScoringSection() {
 
       <div className="border-t border-border pt-4 space-y-3">
         <p className="text-xs font-medium text-foreground">Drempelwaarden</p>
-        <SliderRow label="Hot (>=)" value={hotThreshold} min={1} max={100}
+        <SliderRow label="Hot (>=)" value={hotScoreThreshold} min={1} max={100}
           onChange={(v) => setThreshold('hot', v)}
           badge={<span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 shrink-0">Hot</span>} />
         <SliderRow label="Warm (>=)" value={warmThreshold} min={0} max={99}
@@ -182,7 +183,8 @@ function ScoringSection() {
 }
 
 function KeywordsSection() {
-  const { positiveKeywords, negativeKeywords, addKeyword, removeKeyword } = useConfigStore();
+  const { settings, addKeyword, removeKeyword } = useStore();
+  const { positiveKeywords, negativeKeywords } = settings;
   const [input, setInput] = useState('');
   const [type, setType] = useState<'positive' | 'negative'>('positive');
 
@@ -273,7 +275,8 @@ function KeywordsSection() {
 }
 
 function HubSpotSection() {
-  const { hubspotMapping, updateHubSpotMapping } = useConfigStore();
+  const { settings, updateHubSpotMapping } = useStore();
+  const { hubspotMapping } = settings;
 
   return (
     <ConnectionGuard toolId="hubspot" toolName="HubSpot">
@@ -313,7 +316,8 @@ function HubSpotSection() {
 }
 
 function LemlistSection() {
-  const { lemlistConfig, updateLemlistConfig } = useConfigStore();
+  const { settings, updateLemlistConfig } = useStore();
+  const { lemlistConfig } = settings;
 
   return (
     <ConnectionGuard toolId="lemlist" toolName="Lemlist">
@@ -346,7 +350,8 @@ function LemlistSection() {
 }
 
 function AppearanceSection() {
-  const { appearance, updateAppearance } = useConfigStore();
+  const { settings, updateAppearance } = useStore();
+  const { appearance } = settings;
 
   const themes: { value: 'dark' | 'light' | 'system'; label: string; icon: React.ElementType }[] = [
     { value: 'dark', label: 'Dark', icon: Moon },
@@ -411,7 +416,8 @@ function AppearanceSection() {
 }
 
 function NotificationsSection() {
-  const { notifications, updateNotifications } = useConfigStore();
+  const { settings, updateNotifications } = useStore();
+  const { notifications } = settings;
 
   const items: { key: keyof typeof notifications; label: string }[] = [
     { key: 'newHotLead', label: 'Nieuwe hot lead gedetecteerd' },
