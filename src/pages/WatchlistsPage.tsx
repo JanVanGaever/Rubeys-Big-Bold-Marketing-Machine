@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
 import type { WatchlistOrg, Tier } from '@/types';
 import { getDomainColor, getDomainName } from '@/types';
