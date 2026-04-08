@@ -1,10 +1,9 @@
 import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Heart, MessageCircle } from 'lucide-react';
+import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { ALL_DOMAINS, DOMAIN_META } from '@/types';
+import { ALL_DOMAINS } from '@/types';
 import type { Contact } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,23 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const statusColors: Record<Contact['status'], string> = { hot: 'bg-red-500', warm: 'bg-amber-500', cold: 'bg-muted-foreground/40' };
+
+function ScoreBar({ label, score, weight }: { label: string; score: number; weight: number }) {
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground">{label}</span>
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{score}/100</span>
+          <span className="text-muted-foreground/60">({weight}%)</span>
+        </div>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${score}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact } = useStore();
@@ -47,6 +63,7 @@ export default function ContactsPage() {
   }, [contacts, search, statusFilter, sort]);
 
   const selected = contacts.find(c => c.id === selectedId) ?? null;
+  const w = settings.scoreWeights;
 
   return (
     <div className="space-y-6">
@@ -145,6 +162,8 @@ export default function ContactsPage() {
                   {selected.email && <p className="flex items-center gap-2 text-muted-foreground"><Mail className="h-3 w-3" />{selected.email}</p>}
                   {selected.phone && <p className="flex items-center gap-2 text-muted-foreground"><Phone className="h-3 w-3" />{selected.phone}</p>}
                 </div>
+
+                {/* Domain presence */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground text-sm">Domein scores</h3>
                   {ALL_DOMAINS.map(d => {
@@ -154,17 +173,33 @@ export default function ContactsPage() {
                       <div key={d} className="space-y-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} /><span className="text-foreground">{meta.name}</span></div>
-                          <span className="font-semibold text-foreground">{dp.weightedScore} pts</span>
+                          <span className="text-muted-foreground">{dp.signalCount} signalen</span>
                         </div>
-                        <p className="text-muted-foreground pl-4">{dp.signalCount} signalen</p>
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Score breakdown */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground text-sm">Score breakdown</h3>
+                  <div className="space-y-2">
+                    <ScoreBar label="Engagement" score={selected.engagementScore} weight={w.engagement} />
+                    <ScoreBar label="Keywords" score={selected.keywordScore} weight={w.profileKeywords} />
+                    <ScoreBar label="Cross-signaal" score={selected.crossSignalScore} weight={w.crossSignal} />
+                    <ScoreBar label="Enrichment" score={selected.enrichmentScore} weight={w.enrichment} />
+                    <ScoreBar label="Diversiteit" score={selected.diversityScore} weight={w.orgDiversity} />
+                  </div>
                   <div className="flex items-center justify-between border-t border-border pt-2">
                     <span className="font-semibold text-foreground">Totaal</span>
-                    <span className="text-lg font-bold text-foreground">{selected.totalScore}</span>
+                    <span className="text-lg font-bold text-foreground">{selected.totalScore}/100</span>
                   </div>
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    ({selected.engagementScore}×{(w.engagement / 100).toFixed(2)}) + ({selected.keywordScore}×{(w.profileKeywords / 100).toFixed(2)}) + ({selected.crossSignalScore}×{(w.crossSignal / 100).toFixed(2)}) + ({selected.enrichmentScore}×{(w.enrichment / 100).toFixed(2)}) + ({selected.diversityScore}×{(w.orgDiversity / 100).toFixed(2)}) = {selected.totalScore}
+                  </p>
                 </div>
+
+                {/* Signal timeline */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground text-sm">Signaal tijdlijn</h3>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -245,7 +280,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
               {ALL_DOMAINS.map(d => (
                 <label key={d} className="flex items-center gap-2 text-xs text-foreground">
                   <Checkbox checked={form.domains[d]} onCheckedChange={v => setForm(p => ({ ...p, domains: { ...p.domains, [d]: !!v } }))} />
-                  {DOMAIN_META[d].name.split(' ')[0]}
+                  {settings.domainConfig[d].name.split(' ')[0]}
                 </label>
               ))}
             </div>

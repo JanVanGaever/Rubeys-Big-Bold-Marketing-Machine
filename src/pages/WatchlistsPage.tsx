@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Plus, ToggleLeft, ToggleRight, ExternalLink, Trash2 } from 'lucide-react';
+import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import type { WatchlistOrg, Domain, Tier } from '@/types';
 import { ALL_DOMAINS } from '@/types';
@@ -18,7 +18,7 @@ const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', p
 const tierColors: Record<Tier, string> = { kern: 'bg-green-500/20 text-green-400 border-green-500/30', extended: 'bg-blue-500/20 text-blue-400 border-blue-500/30', peripheral: 'bg-muted text-muted-foreground border-border' };
 
 export default function WatchlistsPage() {
-  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg, settings } = useStore();
+  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg, settings, updateOrgRank } = useStore();
   const domainConfig = settings.domainConfig;
   const [activeDomain, setActiveDomain] = useState<Domain | 'all'>('all');
   const [showAdd, setShowAdd] = useState(false);
@@ -27,6 +27,15 @@ export default function WatchlistsPage() {
   const displayDomains = activeDomain === 'all' ? ALL_DOMAINS : [activeDomain as Domain];
   const activeCount = watchlistOrgs.filter(o => o.isActive).length;
   const phantomCapacity = 50;
+
+  const handleRankChange = (org: WatchlistOrg, direction: 'up' | 'down') => {
+    const sameGroup = watchlistOrgs.filter(o => o.domain === org.domain && o.tier === org.tier);
+    const maxRank = sameGroup.length;
+    const newRank = direction === 'up' ? Math.max(1, org.rank - 1) : Math.min(maxRank, org.rank + 1);
+    if (newRank !== org.rank) {
+      updateOrgRank(org.id, newRank);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,18 +76,34 @@ export default function WatchlistsPage() {
                 </div>
 
                 {TIERS.map(tier => {
-                  const tierOrgs = orgs.filter(o => o.tier === tier);
+                  const tierOrgs = orgs.filter(o => o.tier === tier).sort((a, b) => a.rank - b.rank);
                   if (tierOrgs.length === 0) return null;
                   return (
                     <div key={tier} className="space-y-2">
                       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{tierLabels[tier]}</p>
                       {tierOrgs.map(org => {
                         const orgSignals = signals.filter(s => s.orgId === org.id);
+                        const scoreImpact = (settings.tierWeights[org.tier] / org.rank).toFixed(2);
                         return (
-                          <div key={org.id} className={`flex items-center gap-3 p-2 rounded border transition-colors ${org.isActive ? 'border-border bg-muted/20' : 'border-border/50 bg-muted/5 opacity-50'}`}>
+                          <div key={org.id} className={`flex items-center gap-2 p-2 rounded border transition-colors ${org.isActive ? 'border-border bg-muted/20' : 'border-border/50 bg-muted/5 opacity-50'}`}>
+                            {/* Rank controls */}
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+                                <span className="text-[10px] font-semibold text-foreground">{org.rank}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <button onClick={(e) => { e.stopPropagation(); handleRankChange(org, 'up'); }} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                                  <ChevronUp className="h-3 w-3" />
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); handleRankChange(org, 'down'); }} className="text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                                  <ChevronDown className="h-3 w-3" />
+                                </button>
+                              </div>
+                            </div>
+
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground truncate">{org.name}</p>
-                              <p className="text-[10px] text-muted-foreground truncate">{org.linkedinUrl.replace('https://', '')}</p>
+                              <p className="text-[10px] text-muted-foreground">Impact: {scoreImpact}</p>
                             </div>
                             <Badge variant="outline" className={`text-[10px] ${tierColors[tier]}`}>{tierLabels[tier]}</Badge>
                             <div className="text-[10px] text-muted-foreground text-right shrink-0">
@@ -133,7 +158,7 @@ export default function WatchlistsPage() {
 }
 
 function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose: () => void; defaultDomain: Domain }) {
-  const { addWatchlistOrg, settings } = useStore();
+  const { addWatchlistOrg, watchlistOrgs, settings } = useStore();
   const domainConfig = settings.domainConfig;
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -142,10 +167,13 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
 
   const handleSave = () => {
     if (!name || !url) return;
+    const sameGroup = watchlistOrgs.filter(o => o.domain === domain && o.tier === tier);
+    const nextRank = sameGroup.length + 1;
     addWatchlistOrg({
       id: `org-${Date.now()}`,
       name, linkedinUrl: url, domain, tier, isActive: true,
       postsScrapedCount: 0, lastScrapedAt: null,
+      rank: nextRank,
     });
     setName(''); setUrl('');
     onClose();
