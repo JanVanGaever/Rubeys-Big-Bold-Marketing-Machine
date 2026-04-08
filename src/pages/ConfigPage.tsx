@@ -17,8 +17,10 @@ import {
   Sun,
   Monitor,
   Download,
+  Layers,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
+import DomainsSection from "@/components/DomainsSection";
 import { useConnectionStore } from "@/stores/connectionStore";
 
 /* ─── Toggle Switch ─── */
@@ -550,7 +552,10 @@ export default function ConfigPage() {
       </div>
 
       <div>
-        <Section icon={Target} title="Scoring engine" defaultOpen>
+        <Section icon={Layers} title="Domeinen" defaultOpen>
+          <DomainsSection />
+        </Section>
+        <Section icon={Target} title="Scoring engine">
           <ScoringSection />
         </Section>
         <Section icon={Tags} title="Keywords">
