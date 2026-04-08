@@ -139,11 +139,3 @@ export interface LemlistCampaign {
   opens: number;
   replies: number;
 }
-  id: string;
-  name: string;
-  status: 'active' | 'paused' | 'completed';
-  leadsCount: number;
-  emailsSent: number;
-  opens: number;
-  replies: number;
-}
