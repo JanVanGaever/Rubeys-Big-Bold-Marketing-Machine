@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -10,6 +10,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import LemlistPushDialog from '@/components/LemlistPushDialog';
+import type { Contact } from '@/types';
 
 const fadeIn = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
@@ -18,6 +20,9 @@ export default function BriefingPage() {
   const { contacts, signals, settings, calibrationSuggestions } = useStore();
   const navigate = useNavigate();
   const today = new Date();
+
+  const [pushDialogOpen, setPushDialogOpen] = useState(false);
+  const [pushContacts, setPushContacts] = useState<Contact[]>([]);
 
   const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && !c.lemlistCampaignId), [contacts]);
   const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts, today]);
@@ -43,6 +48,11 @@ export default function BriefingPage() {
   }, [newHot, followUp, almostHot, today, settings.hotScoreThreshold]);
 
   const dayName = format(today, 'EEEE d MMMM', { locale: nl });
+
+  const handlePushToLemlist = (contact: Contact) => {
+    setPushContacts([contact]);
+    setPushDialogOpen(true);
+  };
 
   if (contacts.length === 0) {
     return (
@@ -138,7 +148,7 @@ export default function BriefingPage() {
                         <p className="text-xs text-muted-foreground italic">{item.reason}</p>
                       </div>
                       {item.type === 'new' && (
-                        <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => toast.info('Lemlist push komt in een volgende versie')}>
+                        <Button size="sm" variant="default" className="shrink-0 text-xs gap-1" onClick={() => handlePushToLemlist(c)}>
                           <Send className="h-3.5 w-3.5" />Push naar Lemlist
                         </Button>
                       )}
@@ -247,6 +257,8 @@ export default function BriefingPage() {
           </CardContent>
         </Card>
       )}
+
+      <LemlistPushDialog contacts={pushContacts} open={pushDialogOpen} onOpenChange={setPushDialogOpen} />
     </div>
   );
 }
