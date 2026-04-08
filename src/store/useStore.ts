@@ -123,6 +123,9 @@ function recompute(
     if (totalScore >= settings.hotScoreThreshold) status = 'hot';
     else if (totalScore >= settings.warmThreshold) status = 'warm';
 
+    const previousScore = c.totalScore !== 0 ? c.totalScore : c.previousScore;
+    const scoreChanged = totalScore !== c.totalScore && c.totalScore !== 0;
+
     return {
       ...c,
       domains,
@@ -134,6 +137,8 @@ function recompute(
       crossSignalScore,
       enrichmentScore,
       diversityScore,
+      previousScore: scoreChanged ? c.totalScore : (c.previousScore ?? previousScore),
+      scoreChangedAt: scoreChanged ? new Date().toISOString() : c.scoreChangedAt,
     };
   });
 }
