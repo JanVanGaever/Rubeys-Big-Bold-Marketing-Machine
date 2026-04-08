@@ -146,6 +146,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   signals: seedSignals,
   contacts: seedContacts,
   campaigns: SEED_CAMPAIGNS,
+  importHistory: [],
   settings: DEFAULT_SETTINGS,
 
   addWatchlistOrg: (org) => set(s => {
