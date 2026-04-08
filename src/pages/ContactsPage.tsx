@@ -236,6 +236,7 @@ export default function ContactsPage() {
 }
 
 function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { settings } = useStore();
   const { addContact } = useStore();
   const [form, setForm] = useState({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false } as Record<string, boolean>, notes: '' });
 
