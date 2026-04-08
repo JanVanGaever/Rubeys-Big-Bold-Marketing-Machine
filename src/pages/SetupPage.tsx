@@ -178,7 +178,7 @@ function SetupWizard() {
               className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
               {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : 'Test verbinding'}
             </button>
-            <StatusIndicator status={conn.status} message={conn.statusMessage} />
+            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'hubspot', 'lemlist'].includes(conn.id)} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -254,7 +254,7 @@ function SetupDashboard() {
                     <p className="text-xs font-medium text-foreground">{conn.name}</p>
                     <p className="text-[10px] text-muted-foreground">Laatst gecontroleerd: {relativeTime(conn.lastChecked)}</p>
                   </div>
-                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} /></div>
+                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'hubspot', 'lemlist'].includes(conn.id)} /></div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
