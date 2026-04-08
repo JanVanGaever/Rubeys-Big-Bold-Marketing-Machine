@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { Send, Play, Pause, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import type { Contact } from '@/types';
@@ -25,6 +26,7 @@ export default function CampagnesPage() {
         <h1 className="text-2xl font-bold text-foreground">Campagnes</h1>
         <p className="text-xs text-muted-foreground">Lemlist campagnes en push queue</p>
       </div>
+      <ConnectionAlert connectionId="lemlist" featureName="Campagnes" />
 
       {/* Campaign cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

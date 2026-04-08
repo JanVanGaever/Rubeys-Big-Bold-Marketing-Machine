@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,8 +73,8 @@ export default function HubSpotPage() {
         <h1 className="text-2xl font-bold text-foreground">HubSpot</h1>
         <p className="text-xs text-muted-foreground">Beheer de synchronisatie tussen Lead Catalyst en HubSpot CRM</p>
       </div>
+      <ConnectionAlert connectionId="hubspot" featureName="CRM synchronisatie" />
 
-      {/* Sync status */}
       <Card className="bg-card border-border">
         <CardContent className="p-5">
           <div className="flex items-center justify-between">

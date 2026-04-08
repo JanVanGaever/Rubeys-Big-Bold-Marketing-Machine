@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { useStore } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,7 @@ export default function EnrichmentPage() {
   const [enrichFilter, setEnrichFilter] = useState<'all' | 'email' | 'phone' | 'incomplete'>('all');
   const [enrichFields, setEnrichFields] = useState({ email: true, phone: true, companySize: true, industry: true, website: false });
 
+
   // Queue: warm/hot, not enriched
   const queue = contacts.filter(c => (c.status === 'warm' || c.status === 'hot') && !c.isEnriched)
     .sort((a, b) => b.totalScore - a.totalScore);
@@ -82,8 +84,9 @@ export default function EnrichmentPage() {
         <h1 className="text-2xl font-bold text-foreground">Enrichment</h1>
         <p className="text-xs text-muted-foreground">Beheer en monitor Apollo-verrijking van contacten</p>
       </div>
+      <ConnectionAlert connectionId="apollo" featureName="Enrichment" />
 
-      {/* Stats */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Totaal verrijkt', value: totalEnriched.toString(), icon: Database },
