@@ -278,6 +278,8 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
       crossSignalScore: 0,
       enrichmentScore: 0,
       diversityScore: 0,
+      previousScore: null,
+      scoreChangedAt: null,
     });
   });
 
