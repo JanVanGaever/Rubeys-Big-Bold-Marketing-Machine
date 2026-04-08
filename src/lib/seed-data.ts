@@ -1,5 +1,5 @@
-import type { WatchlistOrg, Signal, Contact, Domain, Tier, LemlistCampaign, AppSettings } from '@/types';
-import { TIER_WEIGHT, DOMAIN_META } from '@/types';
+import type { WatchlistOrg, Signal, Contact, Tier, LemlistCampaign, AppSettings, DomainDefinition } from '@/types';
+import { TIER_WEIGHT, DEFAULT_DOMAINS } from '@/types';
 
 function daysAgo(n: number) {
   const d = new Date('2026-04-07T12:00:00Z');
@@ -84,17 +84,14 @@ interface ContactDef {
 }
 
 const CONTACTS: ContactDef[] = [
-  // Hot (3 domains) - all customers
   { url: 'linkedin.com/in/marie-janssens', first: 'Marie', last: 'Janssens', title: 'Partner', company: 'Mercier Vanderlinden', location: 'Antwerpen', source: 'auto', enriched: true, email: 'marie.janssens@merciervanderlinden.be', phone: '+32 478 12 34 56', lemlistId: 'camp-1', lemlistPushedDaysAgo: 3, notes: 'Top lead — actief in alle 3 domeinen', isCustomer: true },
   { url: 'linkedin.com/in/philippe-van-damme', first: 'Philippe', last: 'Van Damme', title: 'Managing Director', company: 'Sofina', location: 'Brussel', source: 'auto', enriched: true, email: 'pvandamme@sofina.be', isCustomer: true },
   { url: 'linkedin.com/in/nathalie-wouters', first: 'Nathalie', last: 'Wouters', title: 'Director', company: 'Wouters Family Office', location: 'Gent', source: 'auto', enriched: true, email: 'n.wouters@woutersfo.be', phone: '+32 499 88 77 66', isCustomer: true },
-  // Warm (2 domains) - some customers
   { url: 'linkedin.com/in/thomas-de-smedt', first: 'Thomas', last: 'De Smedt', title: 'CEO', company: 'De Smedt Capital', location: 'Gent', source: 'auto', enriched: true, email: 'thomas@desmedtcapital.be', lemlistId: 'camp-1', lemlistPushedDaysAgo: 10, lastContactedDaysAgo: 10, notes: 'Follow-up nodig — al 10 dagen geen reactie', isCustomer: true },
   { url: 'linkedin.com/in/sophie-claes', first: 'Sophie', last: 'Claes', title: 'CFO', company: 'Claes & Partners', location: 'Brussel', source: 'auto', notes: 'Stijgende activiteit — in de gaten houden', isCustomer: true },
   { url: 'linkedin.com/in/jan-peeters', first: 'Jan', last: 'Peeters', title: 'Wealth Manager', company: 'Puilaetco', location: 'Brussel', source: 'auto', isCustomer: true },
   { url: 'linkedin.com/in/charlotte-dubois', first: 'Charlotte', last: 'Dubois', title: 'Partner', company: 'Dubois Family Office', location: 'Brussel', source: 'auto', enriched: true, email: 'c.dubois@duboisfo.be', isCustomer: true },
   { url: 'linkedin.com/in/pieter-vdberg', first: 'Pieter', last: 'Van den Berg', title: 'Director', company: 'Ackermans & van Haaren', location: 'Antwerpen', source: 'auto', isCustomer: true },
-  // Cold (15, 1 domain each)
   { url: 'linkedin.com/in/luc-vermeersch', first: 'Luc', last: 'Vermeersch', title: 'Bestuurder', company: 'Vermeersch Holding', location: 'Antwerpen', source: 'auto' },
   { url: 'linkedin.com/in/alexis-laurent', first: 'Alexis', last: 'Laurent', title: 'VP Private Banking', company: 'Degroof Petercam', location: 'Brussel', source: 'auto' },
   { url: 'linkedin.com/in/isabelle-maes', first: 'Isabelle', last: 'Maes', title: 'Managing Director', company: 'IM Investments', location: 'Knokke', source: 'auto' },
@@ -109,34 +106,25 @@ const CONTACTS: ContactDef[] = [
   { url: 'linkedin.com/in/vincent-deprez', first: 'Vincent', last: 'Deprez', title: 'Directeur', company: 'Deprez Investments', location: 'Brussel', source: 'auto' },
   { url: 'linkedin.com/in/laura-hermans', first: 'Laura', last: 'Hermans', title: 'Family Officer', company: 'Hermans FO', location: 'Hasselt', source: 'auto' },
   { url: 'linkedin.com/in/marc-goossens', first: 'Marc', last: 'Goossens', title: 'Verzamelaar', company: '', location: 'Antwerpen', source: 'auto' },
-  // Manual (2)
   { url: 'linkedin.com/in/hendrik-mertens', first: 'Hendrik', last: 'Mertens', title: 'CEO', company: 'Mertens & Zonen', location: 'Leuven', source: 'manual', notes: 'Ontmoet op BRAFA beurs — sterke interesse in kunst' },
   { url: 'linkedin.com/in/annelies-de-vos', first: 'Annelies', last: 'De Vos', title: 'Partner', company: 'De Vos Advocaten', location: 'Gent', source: 'manual', notes: 'Doorverwezen door Thomas De Smedt' },
 ];
 
-// Signal patterns — includes extra signals for Bozar (k03) from customers to trigger calibration,
-// and signals for non-watchlist orgs to trigger Niveau 2 suggestions
-const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; domain?: Domain; tier?: Tier; days: number; type: 'like' | 'comment'; comment?: string }[] = [
-  // Marie (0) — kunst
+const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; domain?: string; tier?: Tier; days: number; type: 'like' | 'comment'; comment?: string }[] = [
   { contactIdx: 0, orgId: 'k01', days: 1, type: 'like' },
   { contactIdx: 0, orgId: 'k03', days: 3, type: 'comment', comment: 'Schitterend initiatief van Bozar. Kunst verbindt.' },
   { contactIdx: 0, orgId: 'k03', days: 12, type: 'like' },
   { contactIdx: 0, orgId: 'k01', days: 5, type: 'like' },
   { contactIdx: 0, orgId: 'k08', days: 7, type: 'like' },
-  // Marie — beleggen
   { contactIdx: 0, orgId: 'b01', days: 2, type: 'like' },
   { contactIdx: 0, orgId: 'b02', days: 4, type: 'comment', comment: 'Sterk kwartaalrapport. Indrukwekkende groei.' },
   { contactIdx: 0, orgId: 'b01', days: 8, type: 'like' },
   { contactIdx: 0, orgId: 'b03', days: 6, type: 'like' },
-  // Marie — luxe
   { contactIdx: 0, orgId: 'l01', days: 1, type: 'comment', comment: 'Was er vorig jaar ook bij. Prachtig evenement!' },
   { contactIdx: 0, orgId: 'l03', days: 3, type: 'like' },
   { contactIdx: 0, orgId: 'l14', days: 5, type: 'like' },
   { contactIdx: 0, orgId: 'l02', days: 9, type: 'like' },
-  // Marie — non-watchlist org (Tefaf) for Niveau 2
   { contactIdx: 0, orgId: 'ext-tefaf', orgName: 'Tefaf Maastricht', domain: 'kunst', tier: 'extended', days: 4, type: 'like' },
-
-  // Philippe (1) — 3 domains, customer
   { contactIdx: 1, orgId: 'k01', days: 2, type: 'like' },
   { contactIdx: 1, orgId: 'k03', days: 4, type: 'like' },
   { contactIdx: 1, orgId: 'k03', days: 11, type: 'comment', comment: 'Bozar blijft inspireren.' },
@@ -147,10 +135,7 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; do
   { contactIdx: 1, orgId: 'l01', days: 2, type: 'like' },
   { contactIdx: 1, orgId: 'l04', days: 5, type: 'like' },
   { contactIdx: 1, orgId: 'l05', days: 8, type: 'like' },
-  // Philippe — non-watchlist (Tefaf)
   { contactIdx: 1, orgId: 'ext-tefaf', orgName: 'Tefaf Maastricht', domain: 'kunst', tier: 'extended', days: 6, type: 'comment', comment: 'Fantastische editie dit jaar.' },
-
-  // Nathalie (2) — 3 domains, customer
   { contactIdx: 2, orgId: 'k03', days: 1, type: 'like' },
   { contactIdx: 2, orgId: 'k03', days: 8, type: 'comment', comment: 'Bozar is een must-see.' },
   { contactIdx: 2, orgId: 'k06', days: 4, type: 'comment', comment: 'Mooie tentoonstelling in Mu.ZEE!' },
@@ -159,10 +144,7 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; do
   { contactIdx: 2, orgId: 'l03', days: 3, type: 'like' },
   { contactIdx: 2, orgId: 'l06', days: 6, type: 'like' },
   { contactIdx: 2, orgId: 'l01', days: 8, type: 'comment', comment: 'Wat een line-up dit jaar!' },
-  // Nathalie — non-watchlist (Tefaf)
   { contactIdx: 2, orgId: 'ext-tefaf', orgName: 'Tefaf Maastricht', domain: 'kunst', tier: 'extended', days: 5, type: 'like' },
-
-  // Thomas (3) — kunst + beleggen, customer
   { contactIdx: 3, orgId: 'k01', days: 3, type: 'like' },
   { contactIdx: 3, orgId: 'k03', days: 2, type: 'like' },
   { contactIdx: 3, orgId: 'k09', days: 6, type: 'like' },
@@ -170,42 +152,29 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; do
   { contactIdx: 3, orgId: 'b02', days: 2, type: 'comment', comment: 'Interessante analyse over Belgische markt.' },
   { contactIdx: 3, orgId: 'b01', days: 5, type: 'like' },
   { contactIdx: 3, orgId: 'b06', days: 8, type: 'like' },
-  // Thomas — non-watchlist (Museum Voorlinden)
   { contactIdx: 3, orgId: 'ext-voorlinden', orgName: 'Museum Voorlinden', domain: 'kunst', tier: 'extended', days: 3, type: 'like' },
-
-  // Sophie (4) — beleggen + luxe, customer
   { contactIdx: 4, orgId: 'b01', days: 1, type: 'like' },
   { contactIdx: 4, orgId: 'b03', days: 2, type: 'comment', comment: 'Geert Noels op zijn best.' },
   { contactIdx: 4, orgId: 'b11', days: 4, type: 'like' },
   { contactIdx: 4, orgId: 'l01', days: 1, type: 'like' },
   { contactIdx: 4, orgId: 'l13', days: 3, type: 'like' },
   { contactIdx: 4, orgId: 'k03', days: 5, type: 'like' },
-
-  // Jan (5) — kunst + beleggen, customer
   { contactIdx: 5, orgId: 'k01', days: 4, type: 'like' },
   { contactIdx: 5, orgId: 'k03', days: 3, type: 'like' },
   { contactIdx: 5, orgId: 'k11', days: 9, type: 'like' },
   { contactIdx: 5, orgId: 'b01', days: 3, type: 'like' },
   { contactIdx: 5, orgId: 'b09', days: 7, type: 'like' },
-  // Jan — non-watchlist (Tefaf)
   { contactIdx: 5, orgId: 'ext-tefaf', orgName: 'Tefaf Maastricht', domain: 'kunst', tier: 'extended', days: 7, type: 'like' },
-
-  // Charlotte (6) — kunst + luxe, customer
   { contactIdx: 6, orgId: 'k03', days: 2, type: 'like' },
   { contactIdx: 6, orgId: 'k03', days: 9, type: 'like' },
   { contactIdx: 6, orgId: 'k07', days: 5, type: 'comment', comment: 'Design Museum Gent is een pareltje.' },
   { contactIdx: 6, orgId: 'l03', days: 1, type: 'like' },
   { contactIdx: 6, orgId: 'l07', days: 6, type: 'like' },
-  // Charlotte — non-watchlist (Tefaf)
   { contactIdx: 6, orgId: 'ext-tefaf', orgName: 'Tefaf Maastricht', domain: 'kunst', tier: 'extended', days: 8, type: 'like' },
-
-  // Pieter (7) — beleggen + luxe, customer
   { contactIdx: 7, orgId: 'b04', days: 2, type: 'like' },
   { contactIdx: 7, orgId: 'b13', days: 5, type: 'like' },
   { contactIdx: 7, orgId: 'l01', days: 3, type: 'like' },
   { contactIdx: 7, orgId: 'k03', days: 4, type: 'like' },
-
-  // Cold contacts — ~2 signals each
   { contactIdx: 8, orgId: 'k01', days: 4, type: 'like' },
   { contactIdx: 8, orgId: 'k08', days: 8, type: 'like' },
   { contactIdx: 9, orgId: 'b02', days: 3, type: 'like' },
@@ -234,7 +203,6 @@ const SIGNAL_PATTERNS: { contactIdx: number; orgId: string; orgName?: string; do
   { contactIdx: 20, orgId: 'l10', days: 7, type: 'like' },
   { contactIdx: 21, orgId: 'k01', days: 6, type: 'comment', comment: 'Prachtige collectie!' },
   { contactIdx: 21, orgId: 'k09', days: 11, type: 'like' },
-  // Manual contacts
   { contactIdx: 22, orgId: 'k08', days: 0, type: 'like' },
   { contactIdx: 23, orgId: 'b01', days: 0, type: 'like' },
 ];
@@ -262,15 +230,17 @@ export function buildSignals(): Signal[] {
   });
 }
 
-function emptyDomains(): Contact['domains'] {
-  return {
-    kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-    beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-    luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 },
-  };
+function emptyDomains(domainDefs: DomainDefinition[]): Record<string, Contact['domains'][string]> {
+  const result: Record<string, Contact['domains'][string]> = {};
+  for (const d of domainDefs) {
+    result[d.id] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
+  }
+  return result;
 }
 
 export function buildContacts(signals: Signal[], hotThreshold: number): Contact[] {
+  const domainDefs = DEFAULT_DOMAINS;
+  const domainIds = domainDefs.map(d => d.id);
   const contactMap = new Map<string, Contact>();
 
   CONTACTS.forEach((c, i) => {
@@ -282,7 +252,7 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
       email: c.email ?? null, phone: c.phone ?? null,
       location: c.location, source: c.source,
       addedAt: daysAgo(13),
-      domains: emptyDomains(),
+      domains: emptyDomains(domainDefs),
       activeDomainCount: 0, totalScore: 0, status: 'cold',
       isEnriched: c.enriched ?? false,
       enrichedAt: c.enriched ? daysAgo(10) : null,
@@ -300,16 +270,18 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
   for (const s of signals) {
     const contact = contactMap.get(s.contactLinkedinUrl);
     if (!contact) continue;
+    if (!contact.domains[s.domain]) {
+      contact.domains[s.domain] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
+    }
     const dp = contact.domains[s.domain];
     dp.signalCount++;
     dp.weightedScore += TIER_WEIGHT[s.tier];
     if (!dp.lastSignalAt || s.detectedAt > dp.lastSignalAt) dp.lastSignalAt = s.detectedAt;
   }
 
-  const domains: Domain[] = ['kunst', 'beleggen', 'luxe'];
   for (const contact of contactMap.values()) {
-    contact.activeDomainCount = domains.filter(d => contact.domains[d].signalCount > 0).length;
-    contact.totalScore = domains.reduce((sum, d) => sum + contact.domains[d].weightedScore, 0);
+    contact.activeDomainCount = domainIds.filter(d => (contact.domains[d]?.signalCount ?? 0) > 0).length;
+    contact.totalScore = domainIds.reduce((sum, d) => sum + (contact.domains[d]?.weightedScore ?? 0), 0);
   }
 
   return Array.from(contactMap.values());
@@ -328,11 +300,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   manualAddWeight: 3,
   recencyDecay: false,
   recencyDecayFactor: 0.9,
-  domainConfig: {
-    kunst: { name: 'Kunst & Cultuur', color: '#7F77DD', description: 'Musea, galeries, kunstbeurzen en culturele instellingen' },
-    beleggen: { name: 'Beleggen & Financiën', color: '#378ADD', description: 'Banken, vermogensbeheerders, family offices' },
-    luxe: { name: 'Luxe & Lifestyle', color: '#D85A30', description: 'Luxemerken, vastgoed, prestigieuze evenementen' },
-  },
+  domains: [...DEFAULT_DOMAINS],
   profileName: 'Rubey',
   profileEmail: 'rubey@merciervanderlinden.be',
   scoreWeights: { engagement: 30, profileKeywords: 25, crossSignal: 25, enrichment: 10, orgDiversity: 10 },
