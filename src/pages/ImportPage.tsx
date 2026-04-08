@@ -35,7 +35,7 @@ function relativeTime(iso: string) {
 }
 
 export default function ImportPage() {
-  const { contacts, addContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
+  const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
   const [csvData, setCsvData] = useState<string[][] | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
@@ -229,7 +229,19 @@ export default function ImportPage() {
         existingUrls.add(profileUrl);
         newContacts++;
       } else {
-        updated++;
+        // Update existing contact if it has missing fields
+        const existing = useStore.getState().contacts.find(c => normalizeLinkedInUrl(c.linkedinUrl) === profileUrl);
+        if (existing) {
+          const updates: Partial<typeof existing> = {};
+          if ((!existing.title || existing.title === '') && headline) updates.title = headline;
+          if ((!existing.company || existing.company === '') && companyName) updates.company = companyName;
+          if (existing.firstName === 'Onbekend' && firstName !== 'Onbekend') updates.firstName = firstName;
+          if ((!existing.lastName || existing.lastName === '') && lastName) updates.lastName = lastName;
+          if (Object.keys(updates).length > 0) {
+            updateContact(existing.id, updates);
+            updated++;
+          }
+        }
       }
 
       // Try to create a signal by matching postUrl to a watchlist org
@@ -442,11 +454,21 @@ export default function ImportPage() {
                 </Table>
               </div>
               {phantomResult && (
-                <div className="flex gap-3 text-xs flex-wrap">
-                  <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
-                  <span className="text-blue-400">{phantomResult.updated} bestaande bijgewerkt</span>
-                  <span className="text-primary">{phantomResult.newSignals} nieuwe signalen</span>
-                  {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} overgeslagen (geen org match)</span>}
+                <div className="space-y-2">
+                  <div className="flex gap-3 text-xs flex-wrap">
+                    <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
+                    <span className="text-blue-400">{phantomResult.updated} bestaande contacten bijgewerkt</span>
+                    <span className="text-primary">{phantomResult.newSignals} nieuwe signalen aangemaakt</span>
+                    {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} signalen overgeslagen (geen org match)</span>}
+                  </div>
+                  {phantomResult.skippedSignals > 0 && phantomResult.skippedSignals > (phantomResult.newSignals + phantomResult.skippedSignals) / 2 && (
+                    <div className="flex items-start gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
+                      <p className="text-[10px] text-yellow-400">
+                        Meer dan de helft van de signalen kon niet gematcht worden aan een watchlist-organisatie. Controleer of de organisatienamen in je watchlist overeenkomen met de LinkedIn company slugs.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
               {!phantomImporting && (
