@@ -5,7 +5,7 @@ import { useConnectionStore } from '@/stores/connectionStore';
 
 const mainNav = [
   { title: 'Briefing',      to: '/',             icon: Zap,        end: true },
-  { title: 'Import',        to: '/import',       icon: Upload },
+  { title: 'Import',        to: '/import',       icon: Upload,     connectionId: 'phantombuster' },
   { title: 'Contacten',     to: '/contacten',    icon: Users },
   { title: 'Watchlists',    to: '/watchlists',   icon: Eye },
   { title: 'Signalen',      to: '/signalen',     icon: Activity },
@@ -29,7 +29,7 @@ export default function AppSidebar() {
     const conn = connections.find((c) => c.id === connectionId);
     if (!conn) return null;
     if (conn.status === 'error') return 'error';
-    if (conn.status === 'warning') return 'warning';
+    if (conn.status === 'warning' && connectionId !== 'phantombuster') return 'warning';
     return null;
   };
 

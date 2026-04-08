@@ -10,6 +10,8 @@ import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox } fr
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { normalizeLinkedInUrl } from '@/lib/normalize';
+import ConnectionAlert from '@/components/ConnectionAlert';
+import { useConnectionStore } from '@/stores/connectionStore';
 
 const APP_FIELDS = [
   { key: 'linkedinUrl', label: 'LinkedIn URL', required: true },
@@ -36,6 +38,11 @@ function relativeTime(iso: string) {
 
 export default function ImportPage() {
   const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
+  const n8nConfig = useConnectionStore(s => s.connections.find(c => c.id === 'n8n')?.config);
+  const phantomConfig = useConnectionStore(s => s.connections.find(c => c.id === 'phantombuster')?.config);
+  const n8nBaseUrl = n8nConfig?.webhookUrl?.replace(/\/$/, '') || '';
+  const webhookUrl = n8nBaseUrl ? `${n8nBaseUrl}/phantombuster-signals` : 'Configureer eerst n8n in Setup';
+
   const [csvData, setCsvData] = useState<string[][] | null>(null);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
@@ -47,7 +54,6 @@ export default function ImportPage() {
   const [dragActive, setDragActive] = useState<'csv' | 'phantom' | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const phantomRef = useRef<HTMLInputElement>(null);
-  const webhookUrl = 'https://n8n.rubey.be/webhook/phantombuster-signals';
 
   const parseCSV = (text: string): { headers: string[]; rows: string[][] } => {
     const lines = text.trim().split('\n');
@@ -305,6 +311,12 @@ export default function ImportPage() {
       status: skippedSignals > 0 && newSignals === 0 ? 'error' : skippedSignals > 0 ? 'partial' : 'success',
     });
 
+    // Update last signal timestamp
+    useConnectionStore.getState().setConnectionConfig('phantombuster', {
+      ...(useConnectionStore.getState().connections.find(c => c.id === 'phantombuster')?.config || {}),
+      lastSignalReceivedAt: new Date().toISOString(),
+    });
+
     toast.success(`Import voltooid: ${newContacts} nieuwe contacten, ${newSignals} signalen`);
   };
 
@@ -314,6 +326,8 @@ export default function ImportPage() {
         <h1 className="text-2xl font-bold text-foreground">Import</h1>
         <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
       </div>
+
+      <ConnectionAlert connectionId="phantombuster" featureName="Phantombuster Import" />
 
       {/* CSV Import */}
       <Card className="bg-card border-border">
@@ -404,9 +418,18 @@ export default function ImportPage() {
       {/* Phantombuster Import */}
       <Card className="bg-card border-border">
         <CardContent className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <ActivityIcon className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Phantombuster Import</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ActivityIcon className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Phantombuster Import</h3>
+            </div>
+            <div>
+              {phantomConfig?.phantomId ? (
+                <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20">Auto</Badge>
+              ) : (
+                <Badge className="text-[9px] bg-amber-500/15 text-amber-400 border-amber-500/20">Manueel</Badge>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -419,6 +442,29 @@ export default function ImportPage() {
             </div>
             <p className="text-[10px] text-muted-foreground">Phantombuster stuurt signalen automatisch via n8n naar deze app.</p>
           </div>
+
+          {/* Auto-import status */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+            <div>
+              <p className="text-xs font-medium text-foreground">Automatische import</p>
+              <p className="text-[10px] text-muted-foreground">
+                {phantomConfig?.phantomId
+                  ? `Phantom ${phantomConfig.phantomId} stuurt signalen automatisch via n8n. Frequentie: ${phantomConfig.scrapeFrequency === 'daily' ? 'dagelijks' : phantomConfig.scrapeFrequency === 'weekly' ? 'wekelijks' : 'manueel'}.`
+                  : 'Configureer een Phantom ID in Setup om signalen automatisch te ontvangen.'}
+              </p>
+            </div>
+            {phantomConfig?.phantomId ? (
+              <Badge className="text-[9px] bg-emerald-500/15 text-emerald-400 border-emerald-500/20 shrink-0">Actief</Badge>
+            ) : (
+              <Badge className="text-[9px] bg-muted text-muted-foreground border-border shrink-0">Niet geconfigureerd</Badge>
+            )}
+          </div>
+
+          {phantomConfig?.lastSignalReceivedAt && (
+            <p className="text-[10px] text-muted-foreground">
+              Laatste signalen ontvangen: {relativeTime(phantomConfig.lastSignalReceivedAt)}
+            </p>
+          )}
 
           <div className="border-t border-border pt-4">
             <p className="text-xs text-muted-foreground mb-2">Manuele Phantombuster CSV import:</p>

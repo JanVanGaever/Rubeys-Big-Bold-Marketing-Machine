@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight, Info } from 'lucide-react';
 import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { testWebhookConnection, testServiceViaWebhook } from '@/lib/api-service';
@@ -21,7 +21,6 @@ function relativeTime(iso: string | null) {
 }
 
 function StatusIndicator({ status, message, isService }: { status: ConnectionStatus; message: string; isService?: boolean }) {
-  // For services (apollo/hubspot/lemlist), use simplified labels
   if (isService) {
     const serviceMap: Record<ConnectionStatus, { icon: typeof CheckCircle2; cls: string; text: string }> = {
       connected: { icon: CheckCircle2, cls: 'text-emerald-500', text: 'Beschikbaar' },
@@ -62,6 +61,8 @@ const SERVICE_LABELS: Record<string, string> = {
   lemlist: 'Lemlist',
 };
 
+const SERVICE_IDS = ['apollo', 'dropcontact', 'hubspot', 'lemlist'];
+
 function ConnectionFields({ id, config, onConfigChange }: { id: string; config: Record<string, string>; onConfigChange: (cfg: Record<string, string>) => void; status: ConnectionStatus }) {
   if (id === 'chrome-extension') {
     return (
@@ -79,6 +80,60 @@ function ConnectionFields({ id, config, onConfigChange }: { id: string; config: 
         <label className="text-xs text-muted-foreground">Webhook URL</label>
         <input type="text" value={config.webhookUrl || ''} onChange={(e) => onConfigChange({ webhookUrl: e.target.value })} placeholder="https://n8n.example.com/webhook/..."
           className="w-full text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+      </div>
+    );
+  }
+  if (id === 'phantombuster') {
+    return (
+      <div className="space-y-4">
+        <div className="p-3 rounded-lg bg-muted/30 border border-border">
+          <p className="text-xs font-medium text-foreground mb-1.5">Hoe werkt het?</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed mb-3">
+            Phantombuster scrapt LinkedIn posts van je watchlist-organisaties en detecteert wie liket en commenteert.
+            De resultaten komen via n8n automatisch in de app, of je importeert ze manueel als CSV.
+          </p>
+          <div className="space-y-1.5 pl-3 border-l-2 border-primary/30">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="text-[10px] text-foreground">Phantombuster scrapt LinkedIn posts</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="text-[10px] text-foreground">n8n ontvangt de resultaten via webhook</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="text-[10px] text-foreground">Lead Catalyst matcht signalen met je watchlist</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Phantom ID (optioneel)</label>
+          <input type="text" value={config.phantomId || ''} onChange={(e) => onConfigChange({ phantomId: e.target.value })} placeholder="bijv. 1234567890"
+            className="w-full text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
+          <p className="text-[10px] text-muted-foreground">
+            Vind je Phantom ID in je Phantombuster dashboard. Nodig voor automatische import via n8n.
+            Zonder ID werkt manuele CSV import nog steeds.
+          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">Scrape frequentie</label>
+          <select value={config.scrapeFrequency || 'manual'} onChange={(e) => onConfigChange({ scrapeFrequency: e.target.value })}
+            className="w-full text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary">
+            <option value="manual">Alleen manueel</option>
+            <option value="daily">Dagelijks</option>
+            <option value="weekly">Wekelijks</option>
+          </select>
+          <p className="text-[10px] text-muted-foreground">
+            Hoe vaak n8n de Phantom triggert. Dit configureert de n8n workflow, niet Phantombuster zelf.
+          </p>
+        </div>
+
+        <a href="https://phantombuster.com/phantombuster" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
+          <ExternalLink className="h-3 w-3" /> Phantombuster Dashboard
+        </a>
       </div>
     );
   }
@@ -122,6 +177,8 @@ function SetupWizard() {
       setConnectionStatus(conn.id, result.success ? 'connected' : 'error', result.success ? 'Webhook bereikbaar' : result.error || 'Niet bereikbaar');
     } else if (conn.id === 'chrome-extension') {
       await testConnection(conn.id);
+    } else if (conn.id === 'phantombuster') {
+      await testConnection(conn.id);
     } else {
       if (!n8nReady) { setConnectionStatus(conn.id, 'error', 'Configureer eerst n8n'); return; }
       setConnectionStatus(conn.id, 'testing', 'Testen via n8n...');
@@ -135,9 +192,10 @@ function SetupWizard() {
     if (currentSetupStep < connections.length - 1) setCurrentStep(currentSetupStep + 1); else completeSetup();
   };
   const handleNext = () => { if (currentSetupStep < connections.length - 1) setCurrentStep(currentSetupStep + 1); else completeSetup(); };
-  const canProceed = conn.status === 'connected';
-  const needsN8n = conn.id !== 'n8n' && conn.id !== 'chrome-extension' && !n8nReady;
-  const isOptionalStep = conn.id === 'dropcontact';
+  const canProceed = conn.status === 'connected' || (conn.id === 'phantombuster' && conn.status === 'warning');
+  const needsN8n = conn.id !== 'n8n' && conn.id !== 'chrome-extension' && conn.id !== 'phantombuster' && !n8nReady;
+  const isOptionalStep = conn.id === 'dropcontact' || conn.id === 'phantombuster';
+  const isPhantomService = conn.id === 'phantombuster';
 
   return (
     <div className="space-y-6">
@@ -147,16 +205,17 @@ function SetupWizard() {
           {connections.map((c, i) => {
             const isActive = i === currentSetupStep;
             const isPast = i < currentSetupStep;
+            const isOk = c.status === 'connected' || (c.id === 'phantombuster' && c.status === 'warning');
             return (
               <div key={c.id} className="flex items-start gap-3">
                 <div className="flex flex-col items-center">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${c.status === 'connected' ? 'bg-emerald-500' : isActive ? 'bg-primary' : 'border border-border bg-transparent'}`}>
-                    {c.status === 'connected' && <Check className="h-3 w-3 text-white" />}
-                    {isActive && c.status !== 'connected' && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${isOk ? 'bg-emerald-500' : isActive ? 'bg-primary' : 'border border-border bg-transparent'}`}>
+                    {isOk && <Check className="h-3 w-3 text-white" />}
+                    {isActive && !isOk && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
                   </div>
-                  {i < connections.length - 1 && <div className={`w-0.5 h-8 ${isPast || c.status === 'connected' ? 'bg-emerald-500' : 'bg-border'}`} />}
+                  {i < connections.length - 1 && <div className={`w-0.5 h-8 ${isPast || isOk ? 'bg-emerald-500' : 'bg-border'}`} />}
                 </div>
-                <span className={`text-xs pt-0.5 ${c.status === 'connected' ? 'text-muted-foreground line-through' : isActive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{c.name}</span>
+                <span className={`text-xs pt-0.5 ${isOk ? 'text-muted-foreground line-through' : isActive ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{c.name}</span>
               </div>
             );
           })}
@@ -178,14 +237,21 @@ function SetupWizard() {
             </div>
           )}
 
+          {isPhantomService && !n8nReady && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Info className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+              <span className="text-[10px] text-amber-400">n8n is niet geconfigureerd. Automatische import is niet beschikbaar, maar je kunt Phantombuster CSV bestanden manueel importeren via de Import pagina.</span>
+            </div>
+          )}
+
           <ConnectionFields id={conn.id} config={conn.config} onConfigChange={(cfg) => setConnectionConfig(conn.id, cfg)} status={conn.status} />
 
           <div className="flex items-center gap-3">
             <button onClick={handleTest} disabled={conn.status === 'testing' || needsN8n}
               className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test verbinding'}
+              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : SERVICE_IDS.includes(conn.id) ? 'Test via n8n' : 'Test verbinding'}
             </button>
-            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id)} />
+            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={SERVICE_IDS.includes(conn.id)} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -223,6 +289,8 @@ function SetupDashboard() {
       setConnectionStatus(id, result.success ? 'connected' : 'error', result.success ? 'Webhook bereikbaar' : result.error || 'Niet bereikbaar');
     } else if (id === 'chrome-extension') {
       await testConnection(id);
+    } else if (id === 'phantombuster') {
+      await testConnection(id);
     } else {
       if (!n8nReady) { setConnectionStatus(id, 'error', 'Configureer eerst n8n'); return; }
       setConnectionStatus(id, 'testing', 'Testen via n8n...');
@@ -245,13 +313,14 @@ function SetupDashboard() {
       <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30 border border-border">
         <span className="text-xs text-muted-foreground">n8n</span>
         <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Apollo, HubSpot, Lemlist</span>
+        <span className="text-xs text-muted-foreground">Phantombuster, Apollo, HubSpot, Lemlist</span>
         <span className="text-[10px] text-muted-foreground ml-2">(alle services communiceren via n8n webhooks)</span>
       </div>
 
       <Accordion type="multiple" defaultValue={defaultOpen}>
         {connections.map((conn) => {
-          const needsN8n = conn.id !== 'n8n' && conn.id !== 'chrome-extension' && !n8nReady;
+          const needsN8n = conn.id !== 'n8n' && conn.id !== 'chrome-extension' && conn.id !== 'phantombuster' && !n8nReady;
+          const isPhantomNoN8n = conn.id === 'phantombuster' && !n8nReady;
           return (
             <AccordionItem key={conn.id} value={conn.id} className="bg-card border border-border rounded-xl mb-3 overflow-hidden border-b-0">
               <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-secondary/20 transition-colors">
@@ -261,7 +330,7 @@ function SetupDashboard() {
                     <p className="text-xs font-medium text-foreground">{conn.name}</p>
                     <p className="text-[10px] text-muted-foreground">Laatst gecontroleerd: {relativeTime(conn.lastChecked)}</p>
                   </div>
-                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id)} /></div>
+                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} isService={SERVICE_IDS.includes(conn.id)} /></div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
@@ -272,11 +341,17 @@ function SetupDashboard() {
                       <span className="text-[10px] text-amber-400">Configureer eerst n8n</span>
                     </div>
                   )}
+                  {isPhantomNoN8n && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <Info className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span className="text-[10px] text-amber-400">n8n niet geconfigureerd. Manuele CSV import werkt nog steeds.</span>
+                    </div>
+                  )}
                   <ConnectionFields id={conn.id} config={conn.config} onConfigChange={(cfg) => setConnectionConfig(conn.id, cfg)} status={conn.status} />
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleTest(conn.id)} disabled={conn.status === 'testing' || needsN8n}
                       className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'dropcontact', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test opnieuw'}
+                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : SERVICE_IDS.includes(conn.id) ? 'Test via n8n' : 'Test opnieuw'}
                     </button>
                   </div>
                 </div>
