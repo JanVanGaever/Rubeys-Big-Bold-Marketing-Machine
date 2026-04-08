@@ -3,7 +3,7 @@ import ConnectionAlert from '@/components/ConnectionAlert';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Heart, MessageCircle, Activity, Users, Zap } from 'lucide-react';
+import { Heart, MessageCircle, Activity, Users, Zap, Radio } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ALL_DOMAINS, DOMAIN_META } from '@/types';
 import type { Tier } from '@/types';
@@ -84,6 +84,12 @@ export default function SignalsPage() {
         </Select>
       </div>
 
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[40vh]">
+          <Radio className="h-12 w-12 text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">Nog geen signalen ontvangen. Signalen verschijnen wanneer contacten interactie hebben met organisaties op je watchlist.</p>
+        </div>
+      ) : (
       <div className="space-y-1">
         {filtered.map(s => {
           const contact = contacts.find(c => c.linkedinUrl === s.contactLinkedinUrl);
@@ -111,6 +117,7 @@ export default function SignalsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
