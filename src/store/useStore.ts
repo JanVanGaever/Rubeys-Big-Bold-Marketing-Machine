@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { WatchlistOrg, Signal, Contact, Domain, AppSettings } from '@/types';
+import type { WatchlistOrg, Signal, Contact, Domain, AppSettings, ImportRecord } from '@/types';
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from '@/lib/seed-data';
 import type { LemlistCampaign } from '@/types';
 
@@ -9,6 +9,7 @@ interface AppState {
   signals: Signal[];
   contacts: Contact[];
   campaigns: LemlistCampaign[];
+  importHistory: ImportRecord[];
   settings: AppSettings;
 
   // Actions
@@ -37,6 +38,7 @@ interface AppState {
   setThreshold: (type: 'hot' | 'warm', value: number) => void;
   setDecayDays: (days: number) => void;
   updateOrgRank: (id: string, newRank: number) => void;
+  addImportRecord: (record: ImportRecord) => void;
 }
 
 const ENGAGEMENT_CAP = 30;
@@ -121,6 +123,9 @@ function recompute(
     if (totalScore >= settings.hotScoreThreshold) status = 'hot';
     else if (totalScore >= settings.warmThreshold) status = 'warm';
 
+    const previousScore = c.totalScore !== 0 ? c.totalScore : c.previousScore;
+    const scoreChanged = totalScore !== c.totalScore && c.totalScore !== 0;
+
     return {
       ...c,
       domains,
@@ -132,6 +137,8 @@ function recompute(
       crossSignalScore,
       enrichmentScore,
       diversityScore,
+      previousScore: scoreChanged ? c.totalScore : (c.previousScore ?? previousScore),
+      scoreChangedAt: scoreChanged ? new Date().toISOString() : c.scoreChangedAt,
     };
   });
 }
@@ -144,6 +151,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
   signals: seedSignals,
   contacts: seedContacts,
   campaigns: SEED_CAMPAIGNS,
+  importHistory: [],
   settings: DEFAULT_SETTINGS,
 
   addWatchlistOrg: (org) => set(s => {
@@ -254,6 +262,10 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     const settings = s.settings;
     return { watchlistOrgs: updated, contacts: recompute(s.contacts, s.signals, settings, updated) };
   }),
+
+  addImportRecord: (record) => set(s => ({
+    importHistory: [record, ...s.importHistory],
+  })),
 }), {
   name: 'rubey-store',
   partialize: (state) => ({
@@ -261,6 +273,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     signals: state.signals,
     contacts: state.contacts,
     campaigns: state.campaigns,
+    importHistory: state.importHistory,
     settings: state.settings,
   }),
 }));

@@ -72,6 +72,9 @@ export interface Contact {
   crossSignalScore: number;
   enrichmentScore: number;
   diversityScore: number;
+  // Score delta tracking
+  previousScore: number | null;
+  scoreChangedAt: string | null;
 }
 
 export interface AppSettings {
@@ -114,6 +117,17 @@ export interface AppSettings {
     connectionDown: boolean;
     dailyDigest: boolean;
   };
+}
+
+export interface ImportRecord {
+  id: string;
+  date: string;
+  type: 'CSV' | 'Phantombuster';
+  records: number;
+  imported: number;
+  duplicates: number;
+  errors: number;
+  status: 'success' | 'partial' | 'error';
 }
 
 export interface LemlistCampaign {

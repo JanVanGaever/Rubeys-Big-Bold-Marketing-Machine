@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send } from 'lucide-react';
+import { Search, Plus, X, ExternalLink, Mail, Phone, CheckCircle2, Send, Users, Upload } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { ALL_DOMAINS } from '@/types';
 import type { Contact } from '@/types';
@@ -37,6 +38,7 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact } = useStore();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sort, setSort] = useState<string>('score');
@@ -75,6 +77,14 @@ export default function ContactsPage() {
         <Button size="sm" onClick={() => setShowAdd(true)} className="gap-1 text-xs"><Plus className="h-3.5 w-3.5" />Prospect toevoegen</Button>
       </div>
 
+      {contacts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[40vh]">
+          <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground mb-4">Nog geen contacten. Importeer je eerste leads via de Import pagina.</p>
+          <Button onClick={() => navigate('/import')} className="gap-2"><Upload className="h-4 w-4" />Ga naar Import</Button>
+        </div>
+      ) : (
+      <>
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
@@ -141,6 +151,8 @@ export default function ContactsPage() {
           </table>
         </CardContent>
       </Card>
+      </>
+      )}
 
       {/* Detail sheet */}
       <Sheet open={!!selected} onOpenChange={() => setSelectedId(null)}>
@@ -255,6 +267,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       activeDomainCount: 0, totalScore: 0, status: 'cold',
       isEnriched: false, enrichedAt: null, lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: form.notes,
       engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
+      previousScore: null, scoreChangedAt: null,
     };
     addContact(newContact);
     setForm({ linkedinUrl: '', firstName: '', lastName: '', title: '', company: '', domains: { kunst: false, beleggen: false, luxe: false }, notes: '' });
