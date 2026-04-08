@@ -33,7 +33,7 @@ function relativeTime(iso: string | null) {
 
 export default function EnrichmentPage() {
   const { contacts, settings, updateContact, recomputeScores, enrichmentHistory, addEnrichmentRecord, updateSettings } = useStore();
-  const domainConfig = settings.domainConfig;
+  const domainDefs = settings.domains ?? [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [enrichFilter, setEnrichFilter] = useState<'all' | 'email' | 'phone' | 'incomplete'>('all');
   const [enrichFields, setEnrichFields] = useState({ email: true, phone: true, companySize: true, industry: true, website: false });
@@ -238,7 +238,7 @@ export default function EnrichmentPage() {
                       <TableCell>
                         <div className="flex gap-1">
                           {Object.entries(c.domains).filter(([, d]) => d.signalCount > 0).map(([key]) => (
-                            <div key={key} className="w-2 h-2 rounded-full" style={{ background: domainConfig[key as keyof typeof domainConfig]?.color || '#666' }} />
+                            <div key={key} className="w-2 h-2 rounded-full" style={{ background: domainDefs.find(d => d.id === key)?.color || '#666' }} />
                           ))}
                         </div>
                       </TableCell>

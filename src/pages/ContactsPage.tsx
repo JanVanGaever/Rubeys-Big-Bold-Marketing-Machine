@@ -17,7 +17,7 @@ import {
   CheckSquare,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
-import { ALL_DOMAINS } from "@/types";
+import { getDomainColor, getDomainName } from "@/types";
 import type { Contact } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact, toggleCustomer } = useStore();
+  const domainDefs = settings.domains ?? [];
+  const domainIds = domainDefs.map(d => d.id);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -85,12 +87,12 @@ export default function ContactsPage() {
     else if (sort === "recent")
       sorted.sort((a, b) => {
         const la =
-          ALL_DOMAINS.map((d) => a.domains[d].lastSignalAt)
+          domainIds.map((d) => a.domains[d]?.lastSignalAt)
             .filter(Boolean)
             .sort()
             .reverse()[0] ?? "";
         const lb =
-          ALL_DOMAINS.map((d) => b.domains[d].lastSignalAt)
+          domainIds.map((d) => b.domains[d]?.lastSignalAt)
             .filter(Boolean)
             .sort()
             .reverse()[0] ?? "";
@@ -254,13 +256,13 @@ export default function ContactsPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex justify-center gap-1">
-                          {ALL_DOMAINS.map((d) => (
+                          {domainDefs.map((dd) => (
                             <div
-                              key={d}
+                              key={dd.id}
                               className="w-2.5 h-2.5 rounded-full"
                               style={{
-                                background: settings.domainConfig[d].color,
-                                opacity: c.domains[d].signalCount > 0 ? 1 : 0.15,
+                                background: dd.color,
+                                opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
                               }}
                             />
                           ))}
@@ -269,7 +271,7 @@ export default function ContactsPage() {
                       <td className="p-3 text-center font-semibold text-foreground">{c.totalScore}</td>
                       <td className="p-3 text-right text-muted-foreground">
                         {(() => {
-                          const last = ALL_DOMAINS.map((d) => c.domains[d].lastSignalAt)
+                          const last = domainIds.map((d) => c.domains[d]?.lastSignalAt)
                             .filter(Boolean)
                             .sort()
                             .reverse()[0];
@@ -381,15 +383,14 @@ export default function ContactsPage() {
                 {/* Domain presence */}
                 <div className="space-y-3">
                   <h3 className="font-semibold text-foreground text-sm">Domein scores</h3>
-                  {ALL_DOMAINS.map((d) => {
-                    const dp = selected.domains[d];
-                    const meta = settings.domainConfig[d];
+                  {domainDefs.map((dd) => {
+                    const dp = selected.domains[dd.id] ?? { signalCount: 0 };
                     return (
-                      <div key={d} className="space-y-1">
+                      <div key={dd.id} className="space-y-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
-                            <span className="text-foreground">{meta.name}</span>
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ background: dd.color }} />
+                            <span className="text-foreground">{dd.name}</span>
                           </div>
                           <span className="text-muted-foreground">{dp.signalCount} signalen</span>
                         </div>
@@ -437,7 +438,7 @@ export default function ContactsPage() {
                         <div key={s.id} className="flex items-start gap-2 p-2 rounded bg-muted/30">
                           <div
                             className="w-2 h-2 rounded-full mt-1 shrink-0"
-                            style={{ background: settings.domainConfig[s.domain].color }}
+                            style={{ background: getDomainColor(domainDefs, s.domain) }}
                           />
                           <div className="flex-1 min-w-0">
                             <p className="text-foreground">
@@ -483,13 +484,14 @@ export default function ContactsPage() {
 
 function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { settings, addContact } = useStore();
+  const domainDefs = settings.domains ?? [];
   const [form, setForm] = useState({
     linkedinUrl: "",
     firstName: "",
     lastName: "",
     title: "",
     company: "",
-    domains: { kunst: false, beleggen: false, luxe: false } as Record<string, boolean>,
+    domains: Object.fromEntries(domainDefs.map(d => [d.id, false])) as Record<string, boolean>,
     notes: "",
   });
 
@@ -511,23 +513,11 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       location: null,
       source: "manual",
       addedAt: new Date().toISOString(),
-      domains: {
-        kunst: {
-          signalCount: form.domains.kunst ? 1 : 0,
-          lastSignalAt: form.domains.kunst ? new Date().toISOString() : null,
-          weightedScore: form.domains.kunst ? 3 : 0,
-        },
-        beleggen: {
-          signalCount: form.domains.beleggen ? 1 : 0,
-          lastSignalAt: form.domains.beleggen ? new Date().toISOString() : null,
-          weightedScore: form.domains.beleggen ? 3 : 0,
-        },
-        luxe: {
-          signalCount: form.domains.luxe ? 1 : 0,
-          lastSignalAt: form.domains.luxe ? new Date().toISOString() : null,
-          weightedScore: form.domains.luxe ? 3 : 0,
-        },
-      },
+      domains: Object.fromEntries(domainDefs.map(d => [d.id, {
+        signalCount: form.domains[d.id] ? 1 : 0,
+        lastSignalAt: form.domains[d.id] ? new Date().toISOString() : null,
+        weightedScore: form.domains[d.id] ? 3 : 0,
+      }])),
       activeDomainCount: 0,
       totalScore: 0,
       status: "cold",
@@ -554,7 +544,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       lastName: "",
       title: "",
       company: "",
-      domains: { kunst: false, beleggen: false, luxe: false },
+      domains: Object.fromEntries(domainDefs.map(d => [d.id, false])),
       notes: "",
     });
     onClose();
@@ -615,13 +605,13 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <div>
             <Label className="text-xs">Domeinen</Label>
             <div className="flex gap-4 mt-2">
-              {ALL_DOMAINS.map((d) => (
-                <label key={d} className="flex items-center gap-2 text-xs text-foreground">
+              {domainDefs.map((dd) => (
+                <label key={dd.id} className="flex items-center gap-2 text-xs text-foreground">
                   <Checkbox
-                    checked={form.domains[d]}
-                    onCheckedChange={(v) => setForm((p) => ({ ...p, domains: { ...p.domains, [d]: !!v } }))}
+                    checked={form.domains[dd.id]}
+                    onCheckedChange={(v) => setForm((p) => ({ ...p, domains: { ...p.domains, [dd.id]: !!v } }))}
                   />
-                  {settings.domainConfig[d].name}
+                  {dd.name}
                 </label>
               ))}
             </div>

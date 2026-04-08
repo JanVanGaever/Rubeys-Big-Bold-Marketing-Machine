@@ -1,21 +1,40 @@
-export type Domain = 'kunst' | 'beleggen' | 'luxe';
 export type Tier = 'kern' | 'extended' | 'peripheral';
 
 export const TIER_WEIGHT: Record<Tier, number> = { kern: 3, extended: 2, peripheral: 1 };
 
-export const DOMAIN_META: Record<Domain, { name: string; color: string; description: string }> = {
-  kunst: { name: 'Kunst & Cultuur', color: '#7F77DD', description: 'Musea, galeries, kunstbeurzen en culturele instellingen' },
-  beleggen: { name: 'Beleggen & Financiën', color: '#378ADD', description: 'Banken, vermogensbeheerders, family offices' },
-  luxe: { name: 'Luxe & Lifestyle', color: '#D85A30', description: 'Luxemerken, vastgoed, prestigieuze evenementen' },
-};
+export interface DomainDefinition {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  weight: number;
+  sortOrder: number;
+  createdAt: string;
+}
 
-export const ALL_DOMAINS: Domain[] = ['kunst', 'beleggen', 'luxe'];
+export const DEFAULT_DOMAINS: DomainDefinition[] = [
+  { id: 'kunst', name: 'Kunst & Cultuur', description: 'Musea, galeries, kunstbeurzen en culturele instellingen', color: '#7F77DD', weight: 33, sortOrder: 0, createdAt: '2026-01-01T00:00:00Z' },
+  { id: 'beleggen', name: 'Beleggen & Financiën', description: 'Banken, vermogensbeheerders, family offices', color: '#378ADD', weight: 34, sortOrder: 1, createdAt: '2026-01-01T00:00:00Z' },
+  { id: 'luxe', name: 'Luxe & Lifestyle', description: 'Luxemerken, vastgoed, prestigieuze evenementen', color: '#D85A30', weight: 33, sortOrder: 2, createdAt: '2026-01-01T00:00:00Z' },
+];
+
+export function getDomainById(domains: DomainDefinition[], id: string): DomainDefinition | undefined {
+  return domains.find(d => d.id === id);
+}
+
+export function getDomainColor(domains: DomainDefinition[], id: string): string {
+  return getDomainById(domains, id)?.color ?? '#666';
+}
+
+export function getDomainName(domains: DomainDefinition[], id: string): string {
+  return getDomainById(domains, id)?.name ?? id;
+}
 
 export interface WatchlistOrg {
   id: string;
   name: string;
   linkedinUrl: string;
-  domain: Domain;
+  domain: string;
   tier: Tier;
   isActive: boolean;
   postsScrapedCount: number;
@@ -30,7 +49,7 @@ export interface Signal {
   contactTitle: string | null;
   orgId: string;
   orgName: string;
-  domain: Domain;
+  domain: string;
   tier: Tier;
   engagementType: 'like' | 'comment';
   commentText: string | null;
@@ -56,7 +75,7 @@ export interface Contact {
   location: string | null;
   source: 'auto' | 'manual' | 'import';
   addedAt: string;
-  domains: Record<Domain, DomainPresence>;
+  domains: Record<string, DomainPresence>;
   activeDomainCount: number;
   totalScore: number;
   status: 'cold' | 'warm' | 'hot';
@@ -83,7 +102,7 @@ export interface AppSettings {
   manualAddWeight: number;
   recencyDecay: boolean;
   recencyDecayFactor: number;
-  domainConfig: Record<Domain, { name: string; color: string; description: string }>;
+  domains: DomainDefinition[];
   profileName: string;
   profileEmail: string;
   scoreWeights: {

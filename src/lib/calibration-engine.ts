@@ -1,5 +1,5 @@
-import type { Contact, Signal, WatchlistOrg, AppSettings, CalibrationSuggestion, Domain } from '@/types';
-import { ALL_DOMAINS } from '@/types';
+import type { Contact, Signal, WatchlistOrg, AppSettings, CalibrationSuggestion } from '@/types';
+import { getDomainName } from '@/types';
 
 export function runCalibration(
   customers: Contact[],
@@ -11,21 +11,19 @@ export function runCalibration(
   const results: CalibrationSuggestion[] = [];
   const totalCustomers = customers.length;
   const now = new Date().toISOString();
+  const allDomainIds = settings.domains.map(d => d.id);
 
-  // Helper: check if suggestion already exists as pending
   const hasPending = (type: string, orgId?: string, domain?: string) =>
     existingSuggestions.some(s => s.status === 'pending' && s.type === type && s.orgId === orgId && s.domain === domain);
 
-  // Get all customer signals
   const customerUrls = new Set(customers.map(c => c.linkedinUrl));
   const customerSignals = signals.filter(s => customerUrls.has(s.contactLinkedinUrl));
 
   // ── NIVEAU 1: RANGORDE SUGGESTIES (min 5 klanten) ──
   if (totalCustomers >= 5) {
-    for (const domain of ALL_DOMAINS) {
+    for (const domain of allDomainIds) {
       const domainOrgs = watchlistOrgs.filter(o => o.domain === domain);
       
-      // Per org: count how many customers have at least 1 signal
       const orgCustomerEngagement: Array<{ org: WatchlistOrg; customerCount: number; percentage: number }> = [];
       
       for (const org of domainOrgs) {
@@ -37,18 +35,16 @@ export function runCalibration(
         }
       }
 
-      // Sort by customer engagement descending
       orgCustomerEngagement.sort((a, b) => b.customerCount - a.customerCount);
 
-      // Check if any high-engagement org is at a low rank
       for (let i = 0; i < orgCustomerEngagement.length; i++) {
         const { org, customerCount, percentage } = orgCustomerEngagement[i];
-        const suggestedRank = i + 1; // ideal rank based on customer engagement
+        const suggestedRank = i + 1;
         
         if (org.rank > 2 && percentage > 40 && suggestedRank < org.rank) {
           if (hasPending('rank_change', org.id, domain)) continue;
           
-          const domainName = settings.domainConfig[domain].name;
+          const domainName = getDomainName(settings.domains, domain);
           results.push({
             id: `cal-${Date.now()}-${results.length}`,
             level: 1,
@@ -69,9 +65,8 @@ export function runCalibration(
     }
   }
 
-  // ── NIVEAU 2: NIEUWE ORGANISATIE SUGGESTIES (min 10 klanten) ──
+  // ── NIVEAU 2: NIEUWE ORGANISATIE SUGGESTIES (min 5 klanten) ──
   if (totalCustomers >= 5) {
-    // Strategy: look at customer companies not on watchlist
     const watchlistNames = new Set(watchlistOrgs.map(o => o.name.toLowerCase()));
     const companyCount: Record<string, { count: number; company: string }> = {};
     
@@ -85,9 +80,8 @@ export function runCalibration(
       }
     }
 
-    // Also look for signals referencing non-watchlist orgs (by orgName)
     const watchlistIds = new Set(watchlistOrgs.map(o => o.id));
-    const nonWatchlistSignals: Record<string, { orgName: string; count: number; domain: Domain }> = {};
+    const nonWatchlistSignals: Record<string, { orgName: string; count: number; domain: string }> = {};
     for (const s of customerSignals) {
       if (!watchlistIds.has(s.orgId)) {
         const key = s.orgName.toLowerCase();
@@ -101,13 +95,12 @@ export function runCalibration(
       }
     }
 
-    // Generate suggestions for non-watchlist orgs with enough customer engagement
     const threshold = Math.max(3, Math.ceil(totalCustomers * 0.25));
     
     for (const [, data] of Object.entries(nonWatchlistSignals)) {
       if (data.count >= Math.min(threshold, 3)) {
         const percentage = Math.round((data.count / totalCustomers) * 100);
-        const domainName = settings.domainConfig[data.domain].name;
+        const domainName = getDomainName(settings.domains, data.domain);
         if (hasPending('add_org', undefined, data.domain)) continue;
         
         results.push({
@@ -128,7 +121,6 @@ export function runCalibration(
       }
     }
 
-    // Also check companies
     for (const [, data] of Object.entries(companyCount)) {
       if (data.count >= Math.min(threshold, 3)) {
         const percentage = Math.round((data.count / totalCustomers) * 100);
@@ -154,18 +146,17 @@ export function runCalibration(
 
   // ── NIVEAU 3: DOMEIN HEROVERWEGINGEN (min 20 klanten) ──
   if (totalCustomers >= 20) {
-    // Count engagement per domain
-    const domainEngagement: Record<Domain, number> = { kunst: 0, beleggen: 0, luxe: 0 };
+    const domainEngagement: Record<string, number> = {};
+    for (const d of allDomainIds) domainEngagement[d] = 0;
     for (const s of customerSignals) {
-      domainEngagement[s.domain]++;
+      domainEngagement[s.domain] = (domainEngagement[s.domain] ?? 0) + 1;
     }
     const totalEngagement = Object.values(domainEngagement).reduce((a, b) => a + b, 0);
 
     if (totalEngagement > 0) {
-      for (const domain of ALL_DOMAINS) {
-        const pct = Math.round((domainEngagement[domain] / totalEngagement) * 100);
+      for (const domain of allDomainIds) {
+        const pct = Math.round(((domainEngagement[domain] ?? 0) / totalEngagement) * 100);
         if (pct < 20) {
-          // Look for keywords in customer titles
           const titleWords: Record<string, number> = {};
           for (const c of customers) {
             const words = (c.title ?? '').toLowerCase().split(/\s+/).filter(w => w.length > 3);
@@ -181,7 +172,7 @@ export function runCalibration(
 
           if (topKeywords.length > 0 && !hasPending('domain_rename', undefined, domain)) {
             const kwString = topKeywords.map(([k]) => `"${k}"`).join(', ');
-            const domainName = settings.domainConfig[domain].name;
+            const domainName = getDomainName(settings.domains, domain);
             results.push({
               id: `cal-${Date.now()}-${results.length}`,
               level: 3,
@@ -201,7 +192,6 @@ export function runCalibration(
     }
   }
 
-  // Sort: level 1 first, then 2, then 3
   results.sort((a, b) => a.level - b.level);
   return results;
 }

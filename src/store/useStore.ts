@@ -4,14 +4,16 @@ import type {
   WatchlistOrg,
   Signal,
   Contact,
-  Domain,
   AppSettings,
   ImportRecord,
   CalibrationSuggestion,
   EnrichmentRecord,
   SyncRecord,
   LemlistCampaign,
+  DomainDefinition,
+  DomainPresence,
 } from "@/types";
+import { DEFAULT_DOMAINS } from "@/types";
 import { SEED_ORGS, buildSignals, buildContacts, SEED_CAMPAIGNS, DEFAULT_SETTINGS } from "@/lib/seed-data";
 
 interface AppState {
@@ -51,22 +53,43 @@ interface AppState {
   acceptSuggestion: (id: string) => void;
   rejectSuggestion: (id: string) => void;
   toggleCustomer: (contactId: string) => void;
+  addDomain: (domain: DomainDefinition) => void;
+  updateDomain: (id: string, updates: Partial<Omit<DomainDefinition, 'id'>>) => void;
+  removeDomain: (id: string) => void;
+  reorderDomains: (orderedIds: string[]) => void;
 }
 
 const ENGAGEMENT_CAP = 30;
 
+/** Migrate old domainConfig format to new domains array */
+function migrateDomainConfig(input: any): DomainDefinition[] | undefined {
+  if (input?.domainConfig && !input?.domains) {
+    const cfg = input.domainConfig as Record<string, { name: string; color: string; description: string }>;
+    return Object.entries(cfg).map(([id, v], i) => ({
+      id,
+      name: v.name,
+      description: v.description,
+      color: v.color,
+      weight: Math.round(100 / Object.keys(cfg).length),
+      sortOrder: i,
+      createdAt: '2026-01-01T00:00:00Z',
+    }));
+  }
+  return undefined;
+}
+
 function normalizeSettings(settings?: Partial<AppSettings> | null): AppSettings {
-  const input = settings ?? {};
+  const input = (settings ?? {}) as any;
+
+  // Migrate old domainConfig to domains array
+  const migratedDomains = migrateDomainConfig(input);
+  const domains = migratedDomains ?? input.domains ?? DEFAULT_SETTINGS.domains;
 
   return {
     ...DEFAULT_SETTINGS,
     ...input,
+    domains: domains.length > 0 ? domains : DEFAULT_SETTINGS.domains,
     tierWeights: { ...DEFAULT_SETTINGS.tierWeights, ...(input.tierWeights ?? {}) },
-    domainConfig: {
-      kunst: { ...DEFAULT_SETTINGS.domainConfig.kunst, ...(input.domainConfig?.kunst ?? {}) },
-      beleggen: { ...DEFAULT_SETTINGS.domainConfig.beleggen, ...(input.domainConfig?.beleggen ?? {}) },
-      luxe: { ...DEFAULT_SETTINGS.domainConfig.luxe, ...(input.domainConfig?.luxe ?? {}) },
-    },
     scoreWeights: { ...DEFAULT_SETTINGS.scoreWeights, ...(input.scoreWeights ?? {}) },
     positiveKeywords: input.positiveKeywords ?? DEFAULT_SETTINGS.positiveKeywords,
     negativeKeywords: input.negativeKeywords ?? DEFAULT_SETTINGS.negativeKeywords,
@@ -93,15 +116,21 @@ function recompute(
   watchlistOrgs: WatchlistOrg[],
 ): Contact[] {
   const normalizedSettings = normalizeSettings(settings);
-  const domainKeys: Domain[] = ["kunst", "beleggen", "luxe"];
+  const domainKeys = normalizedSettings.domains.map(d => d.id);
+  const totalDomains = domainKeys.length;
   const orgMap = new Map(watchlistOrgs.map((o) => [o.id, o]));
 
   return contacts.map((c) => {
-    const domains = {
-      kunst: { signalCount: 0, lastSignalAt: null as string | null, weightedScore: 0 },
-      beleggen: { signalCount: 0, lastSignalAt: null as string | null, weightedScore: 0 },
-      luxe: { signalCount: 0, lastSignalAt: null as string | null, weightedScore: 0 },
-    };
+    const domains: Record<string, DomainPresence> = {};
+    for (const dk of domainKeys) {
+      domains[dk] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
+    }
+    // Also preserve any domains from signals not in current domain list
+    for (const key of Object.keys(c.domains)) {
+      if (!domains[key]) {
+        domains[key] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
+      }
+    }
 
     const contactSignals = signals.filter((s) => s.contactLinkedinUrl === c.linkedinUrl);
 
@@ -109,6 +138,9 @@ function recompute(
     const uniqueOrgs = new Set<string>();
 
     for (const s of contactSignals) {
+      if (!domains[s.domain]) {
+        domains[s.domain] = { signalCount: 0, lastSignalAt: null, weightedScore: 0 };
+      }
       const dp = domains[s.domain];
       dp.signalCount++;
       const org = orgMap.get(s.orgId);
@@ -134,9 +166,19 @@ function recompute(
     }
     const keywordScore = Math.max(0, Math.min(100, keywordRaw));
 
-    const activeDomainCount = domainKeys.filter((d) => domains[d].signalCount > 0).length;
-    const crossMap: Record<number, number> = { 0: 0, 1: 20, 2: 60, 3: 100 };
-    const crossSignalScore = crossMap[activeDomainCount] ?? 0;
+    const activeDomainCount = domainKeys.filter((d) => (domains[d]?.signalCount ?? 0) > 0).length;
+    
+    // Dynamic cross-signal scoring based on total domains
+    let crossSignalScore = 0;
+    if (totalDomains > 0) {
+      if (activeDomainCount === 0) crossSignalScore = 0;
+      else if (activeDomainCount === 1) crossSignalScore = 20;
+      else if (activeDomainCount === totalDomains) crossSignalScore = 100;
+      else {
+        // Linear interpolation between 20 (1 domain) and 100 (all domains)
+        crossSignalScore = Math.round(20 + ((activeDomainCount - 1) / (totalDomains - 1)) * 80);
+      }
+    }
 
     let enrichmentScore = 0;
     if (c.isEnriched) enrichmentScore += 50;
@@ -363,7 +405,6 @@ export const useStore = create<AppState>()(
           let newState: Partial<AppState> = { calibrationSuggestions: updated };
 
           if (suggestion.type === "rank_change" && suggestion.orgId && suggestion.suggestedRank) {
-            // Apply rank change
             const org = s.watchlistOrgs.find((o) => o.id === suggestion.orgId);
             if (org) {
               const oldRank = org.rank;
@@ -380,7 +421,7 @@ export const useStore = create<AppState>()(
               newState.contacts = recompute(s.contacts, s.signals, s.settings, updatedOrgs);
             }
           } else if (suggestion.type === "add_org" && suggestion.suggestedOrgName) {
-            const domain = (suggestion.domain ?? "kunst") as any;
+            const domain = suggestion.domain ?? "kunst";
             const tier = (suggestion.suggestedTier ?? "extended") as any;
             const sameGroup = s.watchlistOrgs.filter((o) => o.domain === domain && o.tier === tier);
             const newOrg: WatchlistOrg = {
@@ -402,14 +443,11 @@ export const useStore = create<AppState>()(
             newState.watchlistOrgs = updatedOrgs;
             newState.contacts = recompute(s.contacts, s.signals, s.settings, updatedOrgs);
           } else if (suggestion.type === "domain_rename" && suggestion.domain && suggestion.suggestedDomainName) {
-            const domain = suggestion.domain as any;
-            const settings = {
-              ...s.settings,
-              domainConfig: {
-                ...s.settings.domainConfig,
-                [domain]: { ...s.settings.domainConfig[domain], name: suggestion.suggestedDomainName },
-              },
-            };
+            const domainId = suggestion.domain;
+            const updatedDomains = s.settings.domains.map(d =>
+              d.id === domainId ? { ...d, name: suggestion.suggestedDomainName! } : d
+            );
+            const settings = { ...s.settings, domains: updatedDomains };
             newState.settings = settings;
           }
 
@@ -430,6 +468,56 @@ export const useStore = create<AppState>()(
             return { ...c, isCustomer: !c.isCustomer, customerSince: !c.isCustomer ? new Date().toISOString() : null };
           }),
         })),
+
+      addDomain: (domain) =>
+        set((s) => {
+          const domains = [...s.settings.domains, domain];
+          const settings = normalizeSettings({ ...s.settings, domains });
+          // Add empty domain presence to all contacts
+          const contacts = s.contacts.map(c => ({
+            ...c,
+            domains: { ...c.domains, [domain.id]: { signalCount: 0, lastSignalAt: null, weightedScore: 0 } },
+          }));
+          return { settings, contacts: recompute(contacts, s.signals, settings, s.watchlistOrgs) };
+        }),
+
+      updateDomain: (id, updates) =>
+        set((s) => {
+          const domains = s.settings.domains.map(d => d.id === id ? { ...d, ...updates } : d);
+          const settings = normalizeSettings({ ...s.settings, domains });
+          const needsRecompute = 'weight' in updates;
+          return needsRecompute
+            ? { settings, contacts: recompute(s.contacts, s.signals, settings, s.watchlistOrgs) }
+            : { settings };
+        }),
+
+      removeDomain: (id) =>
+        set((s) => {
+          if (s.settings.domains.length <= 1) return s;
+          const domains = s.settings.domains.filter(d => d.id !== id);
+          const settings = normalizeSettings({ ...s.settings, domains });
+          const watchlistOrgs = s.watchlistOrgs.filter(o => o.domain !== id);
+          const signals = s.signals.filter(sig => sig.domain !== id);
+          const contacts = s.contacts.map(c => {
+            const { [id]: _, ...rest } = c.domains;
+            return { ...c, domains: rest };
+          });
+          return {
+            settings,
+            watchlistOrgs,
+            signals,
+            contacts: recompute(contacts, signals, settings, watchlistOrgs),
+          };
+        }),
+
+      reorderDomains: (orderedIds) =>
+        set((s) => {
+          const domains = s.settings.domains.map(d => ({
+            ...d,
+            sortOrder: orderedIds.indexOf(d.id),
+          })).sort((a, b) => a.sortOrder - b.sortOrder);
+          return { settings: { ...s.settings, domains } };
+        }),
     }),
     {
       name: "rubey-store",
