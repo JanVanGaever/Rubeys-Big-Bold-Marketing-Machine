@@ -300,6 +300,11 @@ function SetupDashboard() {
                   <Badge className={`text-[8px] ${e.status === 'success' ? 'bg-green-500/20 text-green-400' : e.status === 'retrying' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>
                     {e.status}
                   </Badge>
+                  {e.schemaValid !== undefined && (
+                    <span title={e.schemaValid ? 'Response schema OK' : 'Response schema afwijkend'} className={e.schemaValid ? 'text-emerald-500' : 'text-amber-500'}>
+                      {e.schemaValid ? <Check className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                    </span>
+                  )}
                   <span className="text-muted-foreground w-12 text-right">{e.durationMs}ms</span>
                 </div>
               ))}
