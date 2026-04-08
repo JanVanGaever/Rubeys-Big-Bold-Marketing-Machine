@@ -157,7 +157,7 @@ export default function HandleidingPage() {
           <p className="text-sm text-muted-foreground leading-relaxed">Er zijn twee manieren om data te importeren:</p>
           <div className="space-y-2 text-sm text-muted-foreground">
             <p><strong className="text-foreground">CSV Import:</strong> Upload een CSV-bestand met contactgegevens. Map de kolommen naar de juiste velden (LinkedIn URL is verplicht).</p>
-            <p><strong className="text-foreground">Phantombuster:</strong> Upload een Phantombuster CSV export. Het systeem herkent automatisch het formaat, maakt contacten aan en genereert signalen voor watchlist-organisaties.</p>
+            <p><strong className="text-foreground">Phantombuster:</strong> Phantombuster is de primaire signaalbron. Het scrapt wie reageert op LinkedIn posts van je watchlist-organisaties. Configureer het via Setup. Twee modi: <Tag>automatisch</Tag> (via n8n, aanbevolen) of <Tag>manueel</Tag> (CSV import via de Import pagina). Zonder Phantombuster komen er geen nieuwe signalen binnen.</p>
           </div>
         </section>
 
