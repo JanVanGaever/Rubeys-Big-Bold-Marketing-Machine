@@ -1,20 +1,37 @@
-import { Zap, Upload, Users, Eye, Activity, Database, Send, GitBranch, Settings, BookOpen } from 'lucide-react';
+import { Zap, Upload, Users, Eye, Activity, Database, Send, GitBranch, Plug, SlidersHorizontal, BookOpen, AlertTriangle } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
+import { useConnectionStore } from '@/stores/connectionStore';
 
-const nav = [
+const mainNav = [
   { title: 'Briefing',      to: '/',             icon: Zap,        end: true },
   { title: 'Import',        to: '/import',       icon: Upload },
   { title: 'Contacten',     to: '/contacten',    icon: Users },
   { title: 'Watchlists',    to: '/watchlists',   icon: Eye },
   { title: 'Signalen',      to: '/signalen',     icon: Activity },
-  { title: 'Enrichment',    to: '/enrichment',   icon: Database },
-  { title: 'Campagnes',     to: '/campagnes',    icon: Send },
-  { title: 'HubSpot',       to: '/hubspot',      icon: GitBranch },
-  { title: 'Instellingen',  to: '/instellingen', icon: Settings },
-  { title: 'Handleiding',   to: '/handleiding',  icon: BookOpen },
+  { title: 'Enrichment',    to: '/enrichment',   icon: Database,   connectionId: 'apollo' },
+  { title: 'Campagnes',     to: '/campagnes',    icon: Send,       connectionId: 'lemlist' },
+  { title: 'HubSpot',       to: '/hubspot',      icon: GitBranch,  connectionId: 'hubspot' },
+];
+
+const settingsNav = [
+  { title: 'Setup',         to: '/settings/setup',  icon: Plug },
+  { title: 'Configuratie',  to: '/settings/config', icon: SlidersHorizontal },
 ];
 
 export default function AppSidebar() {
+  const connections = useConnectionStore((s) => s.connections);
+
+  const getConnectionAlert = (connectionId?: string) => {
+    if (!connectionId) return null;
+    const conn = connections.find((c) => c.id === connectionId);
+    if (!conn) return null;
+    if (conn.status === 'error') return 'error';
+    if (conn.status === 'warning') return 'warning';
+    return null;
+  };
+
+  const hasAnyAlert = connections.some((c) => c.status === 'error' || c.status === 'warning');
+
   return (
     <aside className="w-[220px] shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col">
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-sidebar-border">
@@ -26,15 +43,47 @@ export default function AppSidebar() {
           <p className="text-[10px] text-muted-foreground leading-tight">Marketing Machine</p>
         </div>
       </div>
+
       <nav className="flex-1 py-2 overflow-y-auto">
-        {nav.map(item => (
-          <NavLink key={item.to} to={item.to} end={item.end}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-            activeClassName="text-primary bg-sidebar-accent font-medium border-l-2 border-primary pl-[14px]">
-            <item.icon className="h-4 w-4 shrink-0" />{item.title}
-          </NavLink>
-        ))}
+        {mainNav.map(item => {
+          const alert = getConnectionAlert(item.connectionId);
+          return (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+              activeClassName="text-primary bg-sidebar-accent font-medium border-l-2 border-primary pl-[14px]">
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{item.title}</span>
+              {alert && (
+                <AlertTriangle className={`h-3 w-3 shrink-0 ${alert === 'error' ? 'text-red-500' : 'text-amber-500'}`} />
+              )}
+            </NavLink>
+          );
+        })}
+
+        {/* Settings group */}
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-4 mb-1 px-4">Instellingen</p>
+        {settingsNav.map(item => {
+          const isSetup = item.to === '/settings/setup';
+          return (
+            <NavLink key={item.to} to={item.to}
+              className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+              activeClassName="text-primary bg-sidebar-accent font-medium border-l-2 border-primary pl-[14px]">
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{item.title}</span>
+              {isSetup && hasAnyAlert && (
+                <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
+              )}
+            </NavLink>
+          );
+        })}
+
+        <NavLink to="/handleiding"
+          className="flex items-center gap-2.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          activeClassName="text-primary bg-sidebar-accent font-medium border-l-2 border-primary pl-[14px]">
+          <BookOpen className="h-4 w-4 shrink-0" />Handleiding
+        </NavLink>
       </nav>
+
       <div className="px-4 py-3 border-t border-sidebar-border">
         <p className="text-[10px] text-muted-foreground">v2.0 — Lead Catalyst</p>
       </div>
