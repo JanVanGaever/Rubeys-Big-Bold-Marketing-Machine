@@ -63,7 +63,10 @@ export default function HubSpotPage() {
         mapped[m.hs] = (c as any)[m.lc] ?? '';
       }
       if (syncRules.fields.domainTags) {
-        const activeDomains = Object.entries(c.domains).filter(([, d]) => d.signalCount > 0).map(([k]) => settings.domainConfig[k as keyof typeof settings.domainConfig]?.name).join(', ');
+        const activeDomains = Object.entries(c.domains).filter(([, d]) => d.signalCount > 0).map(([k]) => {
+          const dd = (settings.domains ?? []).find(d => d.id === k);
+          return dd?.name ?? k;
+        }).join(', ');
         mapped['domain_tags'] = activeDomains;
       }
       return mapped;
@@ -111,7 +114,7 @@ export default function HubSpotPage() {
             id: `hs-${Date.now()}-${created}`, linkedinUrl: mapped.linkedinUrl || '', firstName: mapped.firstName, lastName: mapped.lastName,
             title: mapped.title || null, company: mapped.company || null, email: mapped.email || null, phone: mapped.phone || null,
             location: null, source: 'import', addedAt: new Date().toISOString(),
-            domains: { kunst: { signalCount: 0, lastSignalAt: null, weightedScore: 0 }, beleggen: { signalCount: 0, lastSignalAt: null, weightedScore: 0 }, luxe: { signalCount: 0, lastSignalAt: null, weightedScore: 0 } },
+            domains: Object.fromEntries((settings.domains ?? []).map(d => [d.id, { signalCount: 0, lastSignalAt: null, weightedScore: 0 }])),
             activeDomainCount: 0, totalScore: 0, status: 'cold', isEnriched: false, enrichedAt: null,
             lemlistCampaignId: null, lemlistPushedAt: null, lastContactedAt: null, notes: '',
             engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,

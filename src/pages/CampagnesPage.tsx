@@ -6,7 +6,7 @@ import type { Contact } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ALL_DOMAINS } from '@/types';
+import { getDomainColor } from '@/types';
 import { isConnectionReady, fetchLemlistCampaigns } from '@/lib/api-service';
 import LemlistPushDialog from '@/components/LemlistPushDialog';
 import { toast } from 'sonner';
@@ -114,10 +114,10 @@ export default function CampagnesPage() {
                         <span className="text-foreground">{c.firstName} {c.lastName}</span>
                         <span className="text-muted-foreground">— {c.company}</span>
                         <div className="flex gap-0.5 ml-auto">
-                          {ALL_DOMAINS.map(d => (
-                            <div key={d} className="w-2 h-2 rounded-full" style={{
-                              background: settings.domainConfig[d].color,
-                              opacity: c.domains[d].signalCount > 0 ? 1 : 0.15,
+                          {(settings.domains ?? []).map(dd => (
+                            <div key={dd.id} className="w-2 h-2 rounded-full" style={{
+                              background: dd.color,
+                              opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
                             }} />
                           ))}
                         </div>
@@ -168,10 +168,10 @@ export default function CampagnesPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex justify-center gap-1">
-                          {ALL_DOMAINS.map(d => (
-                            <div key={d} className="w-2.5 h-2.5 rounded-full" style={{
-                              background: settings.domainConfig[d].color,
-                              opacity: c.domains[d].signalCount > 0 ? 1 : 0.15,
+                          {(settings.domains ?? []).map(dd => (
+                            <div key={dd.id} className="w-2.5 h-2.5 rounded-full" style={{
+                              background: dd.color,
+                              opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
                             }} />
                           ))}
                         </div>

@@ -33,7 +33,7 @@ function relativeTime(iso: string | null) {
 
 export default function EnrichmentPage() {
   const { contacts, settings, updateContact, recomputeScores, enrichmentHistory, addEnrichmentRecord, updateSettings } = useStore();
-  const domainConfig = settings.domainConfig;
+  const domainDefs = settings.domains ?? [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [enrichFilter, setEnrichFilter] = useState<'all' | 'email' | 'phone' | 'incomplete'>('all');
   const [enrichFields, setEnrichFields] = useState({ email: true, phone: true, companySize: true, industry: true, website: false });
