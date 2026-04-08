@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';

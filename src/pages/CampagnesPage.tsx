@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import ConnectionAlert from '@/components/ConnectionAlert';
 import { Send, Play, Pause, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import type { Contact } from '@/types';
