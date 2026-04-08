@@ -258,10 +258,21 @@ export default function HandleidingPage() {
               <p><strong className="text-foreground">Output:</strong> Array van campagnes met <Tag>id</Tag>, <Tag>name</Tag>, <Tag>status</Tag>, <Tag>stats</Tag></p>
             </WorkflowSection>
 
-            <WorkflowSection title="7. Test endpoints">
+            <WorkflowSection title="7. dropcontact-enrich — Dropcontact verrijking (optioneel)">
+              <p><strong className="text-foreground">Trigger:</strong> Webhook node (<Tag>POST</Tag>, pad: <Tag>/dropcontact-enrich</Tag>)</p>
+              <p><strong className="text-foreground">Input:</strong></p>
+              <p className="pl-4 font-mono text-[11px]">{`{ service: 'dropcontact', action: 'dropcontact-enrich', payload: { firstName, lastName, company, companyWebsite, email } }`}</p>
+              <p><strong className="text-foreground">Logica:</strong> Dropcontact API — email lookup + verificatie</p>
+              <p><strong className="text-foreground">Output:</strong></p>
+              <p className="pl-4 font-mono text-[11px]">{`{ email, phone, jobTitle, company, companyWebsite, isVerified }`}</p>
+              <p className="text-amber-400 text-[11px]">Optioneel — alleen nodig als je Europese leads wilt verrijken met GDPR-compliant data.</p>
+            </WorkflowSection>
+
+            <WorkflowSection title="8. Test endpoints">
               <p>Simpele API key validatie workflows:</p>
               <div className="pl-4 space-y-1">
                 <p>• <Tag>apollo-test</Tag> — Valideer Apollo API key</p>
+                <p>• <Tag>dropcontact-test</Tag> — Valideer Dropcontact API key</p>
                 <p>• <Tag>hubspot-test</Tag> — Valideer HubSpot API key/OAuth token</p>
                 <p>• <Tag>lemlist-test</Tag> — Valideer Lemlist API key</p>
                 <p>• <Tag>health</Tag> — Retourneer <Tag>{`{ status: 'ok', timestamp: now }`}</Tag></p>
