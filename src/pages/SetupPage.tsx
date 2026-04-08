@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, AlertTriangle, Circle, Eye, EyeOff, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
+import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight } from 'lucide-react';
 import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { testWebhookConnection, testServiceViaWebhook } from '@/lib/api-service';
@@ -20,7 +20,25 @@ function relativeTime(iso: string | null) {
   return `${Math.floor(hrs / 24)}d geleden`;
 }
 
-function StatusIndicator({ status, message }: { status: ConnectionStatus; message: string }) {
+function StatusIndicator({ status, message, isService }: { status: ConnectionStatus; message: string; isService?: boolean }) {
+  // For services (apollo/hubspot/lemlist), use simplified labels
+  if (isService) {
+    const serviceMap: Record<ConnectionStatus, { icon: typeof CheckCircle2; cls: string; text: string }> = {
+      connected: { icon: CheckCircle2, cls: 'text-emerald-500', text: 'Beschikbaar' },
+      warning: { icon: AlertTriangle, cls: 'text-amber-500', text: message || 'Waarschuwing' },
+      error: { icon: AlertTriangle, cls: 'text-red-500', text: 'Niet beschikbaar' },
+      testing: { icon: Loader2, cls: 'text-muted-foreground animate-spin', text: 'Testen via n8n...' },
+      not_configured: { icon: Circle, cls: 'text-muted-foreground', text: message || 'Wacht op n8n' },
+    };
+    const m = serviceMap[status];
+    return (
+      <div className="flex items-center gap-1.5">
+        <m.icon className={`h-3.5 w-3.5 ${m.cls}`} />
+        <span className={`text-[10px] ${m.cls}`}>{m.text}</span>
+      </div>
+    );
+  }
+
   const map: Record<ConnectionStatus, { icon: typeof CheckCircle2; cls: string; text: string }> = {
     connected: { icon: CheckCircle2, cls: 'text-emerald-500', text: 'Verbonden' },
     warning: { icon: AlertTriangle, cls: 'text-amber-500', text: message || 'Waarschuwing' },
@@ -37,20 +55,13 @@ function StatusIndicator({ status, message }: { status: ConnectionStatus; messag
   );
 }
 
-function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder: string }) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="flex items-center gap-2">
-      <input type={show ? 'text' : 'password'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="flex-1 text-xs bg-secondary/40 border border-border rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />
-      <button onClick={() => setShow(!show)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-lg hover:bg-secondary/40 transition-colors">
-        {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  );
-}
+const SERVICE_LABELS: Record<string, string> = {
+  apollo: 'Apollo',
+  hubspot: 'HubSpot',
+  lemlist: 'Lemlist',
+};
 
-function ConnectionFields({ id, config, onConfigChange, status }: { id: string; config: Record<string, string>; onConfigChange: (cfg: Record<string, string>) => void; status: ConnectionStatus }) {
+function ConnectionFields({ id, config, onConfigChange }: { id: string; config: Record<string, string>; onConfigChange: (cfg: Record<string, string>) => void; status: ConnectionStatus }) {
   if (id === 'chrome-extension') {
     return (
       <div className="space-y-3">
@@ -70,12 +81,13 @@ function ConnectionFields({ id, config, onConfigChange, status }: { id: string; 
       </div>
     );
   }
+  // Apollo, HubSpot, Lemlist – no API key fields, managed in n8n
+  const label = SERVICE_LABELS[id] || id;
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <label className="text-xs text-muted-foreground">API Key</label>
-        <SecretInput value={config.apiKey || ''} onChange={(v) => onConfigChange({ apiKey: v })} placeholder="Plak je API key hier..." />
-      </div>
+    <div className="p-3 rounded-lg bg-muted/30 border border-border">
+      <p className="text-xs text-muted-foreground">
+        API keys worden beheerd in n8n. Configureer je <span className="font-medium text-foreground">{label}</span> credentials in het n8n workflow.
+      </p>
     </div>
   );
 }
@@ -164,9 +176,9 @@ function SetupWizard() {
           <div className="flex items-center gap-3">
             <button onClick={handleTest} disabled={conn.status === 'testing' || needsN8n}
               className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : 'Test verbinding'}
+              {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test verbinding'}
             </button>
-            <StatusIndicator status={conn.status} message={conn.statusMessage} />
+            <StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'hubspot', 'lemlist'].includes(conn.id)} />
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border">
@@ -242,7 +254,7 @@ function SetupDashboard() {
                     <p className="text-xs font-medium text-foreground">{conn.name}</p>
                     <p className="text-[10px] text-muted-foreground">Laatst gecontroleerd: {relativeTime(conn.lastChecked)}</p>
                   </div>
-                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} /></div>
+                  <div className="mr-2"><StatusIndicator status={conn.status} message={conn.statusMessage} isService={['apollo', 'hubspot', 'lemlist'].includes(conn.id)} /></div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-4">
@@ -257,7 +269,7 @@ function SetupDashboard() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => handleTest(conn.id)} disabled={conn.status === 'testing' || needsN8n}
                       className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50">
-                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : 'Test opnieuw'}
+                      {conn.status === 'testing' ? <span className="flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Testen...</span> : ['apollo', 'hubspot', 'lemlist'].includes(conn.id) ? 'Test via n8n' : 'Test opnieuw'}
                     </button>
                   </div>
                 </div>
