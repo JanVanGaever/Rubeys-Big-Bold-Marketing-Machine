@@ -1,11 +1,9 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { nl } from 'date-fns/locale';
-import { Zap, TrendingUp, Clock, Send, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Zap, TrendingUp, Clock, Send, CalendarClock } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { useConnectionStore } from '@/stores/connectionStore';
 import { ALL_DOMAINS } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +14,7 @@ const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 export default function BriefingPage() {
   const { contacts, signals, settings } = useStore();
-  const connections = useConnectionStore((s) => s.connections);
-  const navigate = useNavigate();
   const today = new Date('2026-04-07');
-
-  const allConnected = connections.every(c => c.status === 'connected');
-  const hasError = connections.some(c => c.status === 'error');
 
   const newHot = useMemo(() => contacts.filter(c => c.status === 'hot' && c.source === 'auto' && !c.lemlistCampaignId), [contacts]);
   const followUp = useMemo(() => contacts.filter(c => c.status === 'hot' && c.lemlistCampaignId && c.lemlistPushedAt && (today.getTime() - new Date(c.lemlistPushedAt).getTime()) > 7 * 86400000), [contacts]);
@@ -30,36 +23,10 @@ export default function BriefingPage() {
 
   return (
     <div className="space-y-8">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start justify-between">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">Dinsdag 7 april</p>
           <h1 className="text-2xl font-bold text-foreground">{actionable.length > 0 ? `${actionable.length} lead${actionable.length > 1 ? 's' : ''} klaar voor outreach` : 'Geen directe acties vandaag'}</h1>
-        </div>
-
-        {/* System status widget */}
-        <div
-          onClick={() => navigate('/settings/setup')}
-          className={`bg-card border border-border rounded-xl p-3 cursor-pointer hover:bg-secondary/20 transition-colors ${hasError ? 'ring-1 ring-red-500/20' : ''}`}
-        >
-          {allConnected ? (
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[10px] text-emerald-400">Alle systemen operationeel</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {connections.map(c => (
-                <div key={c.id} className="flex items-center gap-1.5">
-                  {c.status === 'connected' && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                  {c.status === 'warning' && <AlertTriangle className="h-3 w-3 text-amber-500" />}
-                  {c.status === 'error' && <AlertTriangle className="h-3 w-3 text-red-500" />}
-                  {c.status === 'not_configured' && <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />}
-                  {c.status === 'testing' && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
-                  <span className="text-[10px] text-muted-foreground">{c.name.length > 12 ? c.name.slice(0, 12) + '…' : c.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </motion.div>
 
