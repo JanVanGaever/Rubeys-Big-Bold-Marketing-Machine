@@ -151,6 +151,8 @@ export default function ContactsPage() {
           </table>
         </CardContent>
       </Card>
+      </>
+      )}
 
       {/* Detail sheet */}
       <Sheet open={!!selected} onOpenChange={() => setSelectedId(null)}>
