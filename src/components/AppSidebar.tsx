@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Zap, Upload, Users, Eye, Activity, Database, Send, GitBranch, Plug, SlidersHorizontal, BookOpen, AlertTriangle } from 'lucide-react';
+import { Zap, Upload, Users, Eye, Activity, Sparkles, Database, Send, GitBranch, Plug, SlidersHorizontal, BookOpen, AlertTriangle } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useConnectionStore } from '@/stores/connectionStore';
 
@@ -9,6 +9,7 @@ const mainNav = [
   { title: 'Contacten',     to: '/contacten',    icon: Users },
   { title: 'Watchlists',    to: '/watchlists',   icon: Eye },
   { title: 'Signalen',      to: '/signalen',     icon: Activity },
+  { title: 'Kalibratie',    to: '/kalibratie',   icon: Sparkles },
   { title: 'Enrichment',    to: '/enrichment',   icon: Database,   connectionId: 'apollo' },
   { title: 'Campagnes',     to: '/campagnes',    icon: Send,       connectionId: 'lemlist' },
   { title: 'HubSpot',       to: '/hubspot',      icon: GitBranch,  connectionId: 'hubspot' },

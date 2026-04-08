@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, ToggleLeft, ToggleRight, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
@@ -18,7 +18,7 @@ const tierLabels: Record<Tier, string> = { kern: 'Kern', extended: 'Extended', p
 const tierColors: Record<Tier, string> = { kern: 'bg-green-500/20 text-green-400 border-green-500/30', extended: 'bg-blue-500/20 text-blue-400 border-blue-500/30', peripheral: 'bg-muted text-muted-foreground border-border' };
 
 export default function WatchlistsPage() {
-  const { watchlistOrgs, signals, toggleOrgActive, removeOrg, addWatchlistOrg, settings, updateOrgRank } = useStore();
+  const { watchlistOrgs, signals, contacts, toggleOrgActive, removeOrg, addWatchlistOrg, settings, updateOrgRank } = useStore();
   const domainConfig = settings.domainConfig;
   const [activeDomain, setActiveDomain] = useState<Domain | 'all'>('all');
   const [showAdd, setShowAdd] = useState(false);
@@ -28,13 +28,33 @@ export default function WatchlistsPage() {
   const activeCount = watchlistOrgs.filter(o => o.isActive).length;
   const phantomCapacity = 50;
 
+  // Customer engagement stats
+  const customers = useMemo(() => contacts.filter(c => c.isCustomer), [contacts]);
+  const customerUrls = useMemo(() => new Set(customers.map(c => c.linkedinUrl)), [customers]);
+  const customerSignals = useMemo(() => signals.filter(s => customerUrls.has(s.contactLinkedinUrl)), [signals, customerUrls]);
+
+  const orgCustomerStats = useMemo(() => {
+    const stats: Record<string, { customers: number; likes: number; comments: number }> = {};
+    for (const s of customerSignals) {
+      if (!stats[s.orgId]) stats[s.orgId] = { customers: 0, likes: 0, comments: 0 };
+      if (s.engagementType === 'like') stats[s.orgId].likes++;
+      else stats[s.orgId].comments++;
+    }
+    // Count unique customers per org
+    for (const orgId of Object.keys(stats)) {
+      const uniqueCustomers = new Set(customerSignals.filter(s => s.orgId === orgId).map(s => s.contactLinkedinUrl));
+      stats[orgId].customers = uniqueCustomers.size;
+    }
+    return stats;
+  }, [customerSignals]);
+
+  const orgsWithEngagement = Object.keys(orgCustomerStats).filter(id => watchlistOrgs.some(o => o.id === id)).length;
+
   const handleRankChange = (org: WatchlistOrg, direction: 'up' | 'down') => {
     const sameGroup = watchlistOrgs.filter(o => o.domain === org.domain && o.tier === org.tier);
     const maxRank = sameGroup.length;
     const newRank = direction === 'up' ? Math.max(1, org.rank - 1) : Math.min(maxRank, org.rank + 1);
-    if (newRank !== org.rank) {
-      updateOrgRank(org.id, newRank);
-    }
+    if (newRank !== org.rank) updateOrgRank(org.id, newRank);
   };
 
   return (
@@ -45,6 +65,21 @@ export default function WatchlistsPage() {
           <p className="text-xs text-muted-foreground">{watchlistOrgs.length} organisaties over {ALL_DOMAINS.length} domeinen</p>
         </div>
       </div>
+
+      {/* Customer coverage summary */}
+      {customers.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">{orgsWithEngagement} van {watchlistOrgs.length} organisaties hebben klant-engagement</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Progress value={(orgsWithEngagement / watchlistOrgs.length) * 100} className="flex-1 h-1.5" />
+                <span className="text-xs text-foreground font-medium">{Math.round((orgsWithEngagement / watchlistOrgs.length) * 100)}%</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Domain tabs */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -84,9 +119,9 @@ export default function WatchlistsPage() {
                       {tierOrgs.map(org => {
                         const orgSignals = signals.filter(s => s.orgId === org.id);
                         const scoreImpact = (settings.tierWeights[org.tier] / org.rank).toFixed(2);
+                        const custStats = orgCustomerStats[org.id];
                         return (
                           <div key={org.id} className={`flex items-center gap-2 p-2 rounded border transition-colors ${org.isActive ? 'border-border bg-muted/20' : 'border-border/50 bg-muted/5 opacity-50'}`}>
-                            {/* Rank controls */}
                             <div className="flex items-center gap-0.5 shrink-0">
                               <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
                                 <span className="text-[10px] font-semibold text-foreground">{org.rank}</span>
@@ -104,6 +139,9 @@ export default function WatchlistsPage() {
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-foreground truncate">{org.name}</p>
                               <p className="text-[10px] text-muted-foreground">Impact: {scoreImpact}</p>
+                              {custStats && (
+                                <p className="text-[10px] text-muted-foreground">{custStats.customers} klanten | {custStats.likes} likes | {custStats.comments} comments</p>
+                              )}
                             </div>
                             <Badge variant="outline" className={`text-[10px] ${tierColors[tier]}`}>{tierLabels[tier]}</Badge>
                             <div className="text-[10px] text-muted-foreground text-right shrink-0">
@@ -151,7 +189,6 @@ export default function WatchlistsPage() {
         </CardContent>
       </Card>
 
-      {/* Add org dialog */}
       <AddOrgDialog open={showAdd} onClose={() => setShowAdd(false)} defaultDomain={addDomain} />
     </div>
   );
@@ -169,14 +206,8 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
     if (!name || !url) return;
     const sameGroup = watchlistOrgs.filter(o => o.domain === domain && o.tier === tier);
     const nextRank = sameGroup.length + 1;
-    addWatchlistOrg({
-      id: `org-${Date.now()}`,
-      name, linkedinUrl: url, domain, tier, isActive: true,
-      postsScrapedCount: 0, lastScrapedAt: null,
-      rank: nextRank,
-    });
-    setName(''); setUrl('');
-    onClose();
+    addWatchlistOrg({ id: `org-${Date.now()}`, name, linkedinUrl: url, domain, tier, isActive: true, postsScrapedCount: 0, lastScrapedAt: null, rank: nextRank });
+    setName(''); setUrl(''); onClose();
   };
 
   return (
@@ -191,18 +222,14 @@ function AddOrgDialog({ open, onClose, defaultDomain }: { open: boolean; onClose
               <Label className="text-xs">Domein</Label>
               <Select value={domain} onValueChange={v => setDomain(v as Domain)}>
                 <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{domainConfig[d].name}</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{ALL_DOMAINS.map(d => <SelectItem key={d} value={d}>{domainConfig[d].name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Tier</Label>
               <Select value={tier} onValueChange={v => setTier(v as Tier)}>
                 <SelectTrigger className="h-8 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TIERS.map(t => <SelectItem key={t} value={t}>{tierLabels[t]}</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{TIERS.map(t => <SelectItem key={t} value={t}>{tierLabels[t]}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </div>

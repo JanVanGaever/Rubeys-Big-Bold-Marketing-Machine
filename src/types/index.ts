@@ -66,15 +66,15 @@ export interface Contact {
   lemlistPushedAt: string | null;
   lastContactedAt: string | null;
   notes: string;
-  // Score breakdown
   engagementScore: number;
   keywordScore: number;
   crossSignalScore: number;
   enrichmentScore: number;
   diversityScore: number;
-  // Score delta tracking
   previousScore: number | null;
   scoreChangedAt: string | null;
+  isCustomer: boolean;
+  customerSince: string | null;
 }
 
 export interface AppSettings {
@@ -138,4 +138,30 @@ export interface LemlistCampaign {
   emailsSent: number;
   opens: number;
   replies: number;
+}
+
+export type CalibrationLevel = 1 | 2 | 3;
+
+export interface CalibrationSuggestion {
+  id: string;
+  level: CalibrationLevel;
+  type: 'rank_change' | 'add_org' | 'remove_org' | 'domain_rename';
+  title: string;
+  explanation: string;
+  evidence: {
+    customerCount: number;
+    totalCustomers: number;
+    percentage: number;
+  };
+  domain?: string;
+  orgId?: string;
+  orgName?: string;
+  suggestedRank?: number;
+  suggestedOrgName?: string;
+  suggestedOrgUrl?: string;
+  suggestedTier?: string;
+  suggestedDomainName?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+  decidedAt: string | null;
 }

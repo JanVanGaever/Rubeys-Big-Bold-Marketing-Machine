@@ -11,6 +11,7 @@ import HubSpotPage from '@/pages/HubSpotPage';
 import SetupPage from '@/pages/SetupPage';
 import ConfigPage from '@/pages/ConfigPage';
 import HandleidingPage from '@/pages/HandleidingPage';
+import KalibratiePage from '@/pages/KalibratiePage';
 import NotFound from '@/pages/NotFound';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/watchlists" element={<WatchlistsPage />} />
           <Route path="/signalen" element={<SignalsPage />} />
           <Route path="/enrichment" element={<EnrichmentPage />} />
+          <Route path="/kalibratie" element={<KalibratiePage />} />
           <Route path="/campagnes" element={<CampagnesPage />} />
           <Route path="/hubspot" element={<HubSpotPage />} />
           <Route path="/settings/setup" element={<SetupPage />} />
