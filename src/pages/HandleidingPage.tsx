@@ -167,7 +167,7 @@ export default function HandleidingPage() {
             <Tag>Apollo.io</Tag> wordt gebruikt om contactgegevens te verrijken via <Tag>n8n webhooks</Tag>. Alle API-calls verlopen via n8n, zodat API keys veilig aan de serverzijde blijven.
           </p>
           <div className="space-y-1 text-sm text-muted-foreground">
-            <p>• Email adres (prioriteit: persoonlijk > zakelijk)</p>
+            <p>• Email adres (prioriteit: persoonlijk {'>'} zakelijk)</p>
             <p>• Telefoonnummer</p>
             <p>• Bedrijfsgrootte en industrie</p>
           </div>
