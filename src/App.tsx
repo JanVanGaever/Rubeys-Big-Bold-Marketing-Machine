@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
+import { useStore } from '@/store/useStore';
 import BriefingPage from '@/pages/BriefingPage';
 import ImportPage from '@/pages/ImportPage';
 import ContactsPage from '@/pages/ContactsPage';
