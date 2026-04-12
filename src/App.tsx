@@ -16,7 +16,38 @@ import HandleidingPage from '@/pages/HandleidingPage';
 import KalibratiePage from '@/pages/KalibratiePage';
 import NotFound from '@/pages/NotFound';
 
-export default function App() {
+  const initialize = useStore((s) => s.initialize);
+  const isLoading = useStore((s) => s.isLoading);
+  const isInitialized = useStore((s) => s.isInitialized);
+  const lastError = useStore((s) => s.lastError);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  if (!isInitialized && isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Data laden vanuit Supabase...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (lastError && !isInitialized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3 max-w-md">
+          <p className="text-sm text-destructive font-medium">Kon geen verbinding maken met de database</p>
+          <p className="text-xs text-muted-foreground">{lastError}</p>
+          <button onClick={() => initialize()} className="text-xs text-primary hover:underline">Opnieuw proberen</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>
