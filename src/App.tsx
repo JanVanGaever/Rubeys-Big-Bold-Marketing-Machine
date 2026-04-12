@@ -16,6 +16,7 @@ import HandleidingPage from '@/pages/HandleidingPage';
 import KalibratiePage from '@/pages/KalibratiePage';
 import NotFound from '@/pages/NotFound';
 
+export default function App() {
   const initialize = useStore((s) => s.initialize);
   const isLoading = useStore((s) => s.isLoading);
   const isInitialized = useStore((s) => s.isInitialized);
