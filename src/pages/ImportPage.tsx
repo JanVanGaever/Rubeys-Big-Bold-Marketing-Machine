@@ -207,6 +207,7 @@ export default function ImportPage() {
       else if (lower === 'action') colMap['action'] = i;
       else if (lower === 'comments' || lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
       else if (lower === 'timestamp') colMap['timestamp'] = i;
+      else if (lower === 'postcontent' || lower === 'post_content') colMap['postContent'] = i;
     });
 
     let newContacts = 0, updated = 0, newSignals = 0, skippedSignals = 0;
@@ -332,15 +333,16 @@ export default function ImportPage() {
 
     setPhantomResult({ newContacts, updated, newSignals, skippedSignals });
 
+    const realErrors = phantomData.length - newContacts - updated - (existingUrls.size - newContacts);
     addImportRecord({
       id: `imp-${Date.now()}`,
       date: new Date().toISOString(),
       type: 'Phantombuster',
       records: phantomData.length,
-      imported: newContacts,
-      duplicates: updated,
-      errors: skippedSignals,
-      status: skippedSignals > 0 && newSignals === 0 ? 'error' : skippedSignals > 0 ? 'partial' : 'success',
+      imported: newContacts + updated,
+      duplicates: 0,
+      errors: Math.max(0, phantomData.length - newContacts - updated),
+      status: newContacts + updated === 0 ? 'error' : 'success',
     });
 
     // Update last signal timestamp
@@ -349,7 +351,7 @@ export default function ImportPage() {
       lastSignalReceivedAt: new Date().toISOString(),
     });
 
-    toast.success(`Import voltooid: ${newContacts} nieuwe contacten, ${newSignals} signalen`);
+    toast.success(`Import voltooid: ${newContacts} nieuwe contacten, ${updated} bijgewerkt, ${newSignals} signalen`);
   };
 
   return (
