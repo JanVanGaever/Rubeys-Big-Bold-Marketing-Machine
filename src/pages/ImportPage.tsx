@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { normalizeLinkedInUrl } from '@/lib/normalize';
@@ -38,7 +38,7 @@ function relativeTime(iso: string) {
 }
 
 export default function ImportPage() {
-  const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
+  const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings, initialize } = useStore();
   const n8nConfig = useConnectionStore(s => s.connections.find(c => c.id === 'n8n')?.config);
   const phantomConfig = useConnectionStore(s => s.connections.find(c => c.id === 'phantombuster')?.config);
   const n8nBaseUrl = n8nConfig?.webhookUrl?.replace(/\/$/, '') || '';
@@ -53,6 +53,7 @@ export default function ImportPage() {
   const [phantomHeaders, setPhantomHeaders] = useState<string[]>([]);
   const [phantomResult, setPhantomResult] = useState<{ newContacts: number; updated: number; newSignals: number; skippedSignals: number } | null>(null);
   const [phantomImporting, setPhantomImporting] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [dragActive, setDragActive] = useState<'csv' | 'phantom' | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const phantomRef = useRef<HTMLInputElement>(null);
@@ -272,13 +273,17 @@ export default function ImportPage() {
         }
       }
 
-      // Try to create signals by matching postUrl(s) to watchlist orgs
+      // Create signals using the selected watchlist org
+      const selectedOrg = watchlistOrgs.find(o => o.id === selectedOrgId);
+      if (!selectedOrg) {
+        skippedSignals++;
+        return;
+      }
+
       const rawPostUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']]?.trim() : null;
       if (rawPostUrl) {
-        // postsUrl can contain multiple URLs separated by ' | '
         const postUrls = rawPostUrl.split(' | ').map(u => u.trim()).filter(Boolean);
 
-        // Determine engagement type from hasLiked/hasCommented or action
         let engagementType: 'like' | 'comment' = 'like';
         if (colMap['action'] !== undefined) {
           engagementType = row[colMap['action']]?.toLowerCase() === 'comment' ? 'comment' : 'like';
@@ -289,41 +294,23 @@ export default function ImportPage() {
         const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
         const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
 
-        let matchedAny = false;
         for (const postUrl of postUrls) {
-          // Extract org name from postUrl patterns
-          const postMatch = postUrl.match(/\/posts\/([^_]+)/i) || postUrl.match(/\/company\/([^/]+)/i);
-          const postOrgSlug = postMatch?.[1]?.toLowerCase();
-
-          let matchedOrg = null;
-          if (postOrgSlug) {
-            matchedOrg = watchlistOrgs.find(o => {
-              const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
-              return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
-            });
-          }
-
-          if (matchedOrg) {
-            addSignal({
-              id: `phantom-sig-${Date.now()}-${newSignals}`,
-              contactLinkedinUrl: profileUrl,
-              contactName: `${firstName} ${lastName}`,
-              contactTitle: headline,
-              orgId: matchedOrg.id,
-              orgName: matchedOrg.name,
-              domain: matchedOrg.domain,
-              tier: matchedOrg.tier,
-              engagementType,
-              commentText,
-              detectedAt: timestamp || new Date().toISOString(),
-              postUrl,
-            });
-            newSignals++;
-            matchedAny = true;
-          }
+          addSignal({
+            id: `phantom-sig-${Date.now()}-${newSignals}`,
+            contactLinkedinUrl: profileUrl,
+            contactName: `${firstName} ${lastName}`,
+            contactTitle: headline,
+            orgId: selectedOrg.id,
+            orgName: selectedOrg.name,
+            domain: selectedOrg.domain,
+            tier: selectedOrg.tier,
+            engagementType,
+            commentText,
+            detectedAt: timestamp || new Date().toISOString(),
+            postUrl,
+          });
+          newSignals++;
         }
-        if (!matchedAny) skippedSignals++;
       } else {
         skippedSignals++;
       }
@@ -356,9 +343,14 @@ export default function ImportPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Import</h1>
-        <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Import</h1>
+          <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { initialize(); toast.info('Data herladen vanuit database'); }}>
+          <RefreshCw className="h-3 w-3 mr-1" /> Herlaad data
+        </Button>
       </div>
 
       <ConnectionAlert connectionId="phantombuster" featureName="Phantombuster Import" />
@@ -511,8 +503,26 @@ export default function ImportPage() {
             </p>
           )}
 
-          <div className="border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground mb-2">Manuele Phantombuster CSV import:</p>
+          <div className="border-t border-border pt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">Manuele Phantombuster CSV import:</p>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Watchlist organisatie *</label>
+              <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Selecteer de organisatie waarvan de posts komen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {watchlistOrgs.map(org => (
+                    <SelectItem key={org.id} value={org.id} className="text-xs">
+                      {org.name} <span className="text-muted-foreground ml-1">({settings.domains.find(d => d.id === org.domain)?.name || org.domain})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Elk Phantombuster CSV-bestand bevat reacties op posts van één organisatie. Selecteer welke.</p>
+            </div>
+
             <div
               onDragOver={e => { e.preventDefault(); setDragActive('phantom'); }}
               onDragLeave={() => setDragActive(null)}
@@ -552,20 +562,17 @@ export default function ImportPage() {
                     <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
                     <span className="text-blue-400">{phantomResult.updated} bestaande contacten bijgewerkt</span>
                     <span className="text-primary">{phantomResult.newSignals} nieuwe signalen aangemaakt</span>
-                    {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} signalen overgeslagen (geen org match)</span>}
+                    {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} rijen zonder post-URL overgeslagen</span>}
                   </div>
-                  {phantomResult.skippedSignals > 0 && phantomResult.skippedSignals > (phantomResult.newSignals + phantomResult.skippedSignals) / 2 && (
-                    <div className="flex items-start gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
-                      <p className="text-[10px] text-yellow-400">
-                        Meer dan de helft van de signalen kon niet gematcht worden aan een watchlist-organisatie. Controleer of de organisatienamen in je watchlist overeenkomen met de LinkedIn company slugs.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
               {!phantomImporting && (
-                <Button size="sm" onClick={doPhantomImport}>Importeer Phantombuster data</Button>
+                <div className="flex gap-2 items-center">
+                  <Button size="sm" onClick={doPhantomImport} disabled={!selectedOrgId}>
+                    Importeer Phantombuster data
+                  </Button>
+                  {!selectedOrgId && <span className="text-[10px] text-muted-foreground">Selecteer eerst een organisatie hierboven</span>}
+                </div>
               )}
             </div>
           )}
