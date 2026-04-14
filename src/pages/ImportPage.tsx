@@ -224,7 +224,12 @@ export default function ImportPage() {
       const firstName = colMap['firstName'] !== undefined ? row[colMap['firstName']] || 'Onbekend' : 'Onbekend';
       const lastName = colMap['lastName'] !== undefined ? row[colMap['lastName']] || '' : '';
       const headline = colMap['headline'] !== undefined ? row[colMap['headline']] || null : null;
-      const companyName = colMap['companyName'] !== undefined ? row[colMap['companyName']] || null : null;
+      let companyName = colMap['companyName'] !== undefined ? row[colMap['companyName']] || null : null;
+      // Extract company from headline if no dedicated companyName column
+      if (!companyName && headline) {
+        const atMatch = headline.match(/(?:\bat\b|@)\s+(.+?)(?:\s*[|]|$)/i);
+        if (atMatch) companyName = atMatch[1].trim();
+      }
 
       // Create or find contact
       if (!existingUrls.has(profileUrl)) {
