@@ -385,6 +385,17 @@ export default function ImportPage() {
 
           {csvData && (
             <>
+              {isPhantomCsv && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <AlertTriangle className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-medium text-blue-400">Dit lijkt een Phantombuster CSV</p>
+                    <p className="text-[10px] text-blue-400/80">
+                      Voor Phantombuster data kun je beter de <strong>Phantombuster Import</strong> sectie hieronder gebruiken. Die herkent automatisch alle kolommen en maakt ook signalen aan.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div>
                 <p className="text-xs text-muted-foreground mb-2">Preview (eerste 5 rijen van {csvData.length})</p>
                 <div className="overflow-x-auto rounded border border-border">
