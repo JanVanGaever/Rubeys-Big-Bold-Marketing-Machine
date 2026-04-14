@@ -92,8 +92,118 @@ function loadColumnConfig(): { order: string[]; visible: Set<string> } {
 function saveColumnConfig(order: string[], visible: Set<string>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ order, visible: Array.from(visible) }));
 }
+const sourceLabels: Record<string, string> = { auto: 'Auto', manual: 'Manueel', import: 'Import' };
 
-const statusColors: Record<Contact["status"], string> = {
+function renderCell(
+  c: Contact,
+  colId: string,
+  domainDefs: { id: string; name: string; color: string }[],
+  domainIds: string[],
+  onOpenProfile: (id: string) => void,
+): React.ReactNode {
+  switch (colId) {
+    case 'status':
+      return <div className={`w-2 h-2 rounded-full mx-auto ${statusColors[c.status]}`} />;
+    case 'name':
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+            <span className="text-[10px] font-semibold">
+              {c.firstName?.[0] ?? ''}{c.lastName?.[0] ?? ''}
+            </span>
+          </div>
+          <span className="font-medium text-foreground whitespace-nowrap">
+            {c.firstName} {c.lastName}
+          </span>
+          {c.isCustomer && <Star className="h-3 w-3 text-amber-400 fill-amber-400 shrink-0" />}
+        </div>
+      );
+    case 'title':
+      return <span className="text-muted-foreground">{c.title ?? '—'}</span>;
+    case 'company':
+      return <span className="text-muted-foreground">{c.company ?? '—'}</span>;
+    case 'email':
+      return c.email ? (
+        <span className="text-muted-foreground truncate max-w-[180px] block">{c.email}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'phone':
+      return c.phone ? (
+        <span className="text-muted-foreground">{c.phone}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'location':
+      return c.location ? (
+        <span className="text-muted-foreground">{c.location}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'source':
+      return (
+        <Badge variant="outline" className="text-[10px] font-normal">
+          {sourceLabels[c.source] ?? c.source}
+        </Badge>
+      );
+    case 'domains':
+      return (
+        <div className="flex justify-center gap-1">
+          {domainDefs.map((dd) => (
+            <div
+              key={dd.id}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: dd.color,
+                opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
+              }}
+            />
+          ))}
+        </div>
+      );
+    case 'score':
+      return (
+        <ScorePopover contact={c} onOpenProfile={onOpenProfile}>
+          <button className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
+            {c.totalScore}
+          </button>
+        </ScorePopover>
+      );
+    case 'engagement':
+      return <span className="font-mono text-muted-foreground">{c.engagementScore}</span>;
+    case 'keywords':
+      return <span className="font-mono text-muted-foreground">{c.keywordScore}</span>;
+    case 'crossSignal':
+      return <span className="font-mono text-muted-foreground">{c.crossSignalScore}</span>;
+    case 'enrichment':
+      return <span className="font-mono text-muted-foreground">{c.enrichmentScore}</span>;
+    case 'diversity':
+      return <span className="font-mono text-muted-foreground">{c.diversityScore}</span>;
+    case 'lastSignal': {
+      const last = domainIds
+        .map((d) => c.domains[d]?.lastSignalAt)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0];
+      return (
+        <span className="text-muted-foreground">
+          {last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : '—'}
+        </span>
+      );
+    }
+    case 'addedAt':
+      return (
+        <span className="text-muted-foreground">
+          {formatDistanceToNow(new Date(c.addedAt), { addSuffix: true, locale: nl })}
+        </span>
+      );
+    case 'icons':
+      return (
+        <div className="flex items-center justify-center gap-1">
+          {c.isEnriched && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+          {c.lemlistCampaignId && <Send className="h-3.5 w-3.5 text-sky-400" />}
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
+
   hot: "bg-red-500",
   warm: "bg-amber-500",
   cold: "bg-muted-foreground/40",
