@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import Papa from 'papaparse';
 import { useStore } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
