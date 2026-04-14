@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -15,6 +15,14 @@ import {
   Upload,
   Star,
   CheckSquare,
+  Settings2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  EyeOff,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { getDomainColor, getDomainName } from "@/types";
@@ -31,8 +39,169 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { normalizeLinkedInUrl } from "@/lib/normalize";
+
+/* ───── Column definitions ───── */
+interface ColumnDef {
+  id: string;
+  label: string;
+  defaultVisible: boolean;
+  align?: 'left' | 'center' | 'right';
+  minWidth?: string;
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', minWidth: 'w-10' },
+  { id: 'name', label: 'Naam', defaultVisible: true },
+  { id: 'title', label: 'Titel', defaultVisible: true },
+  { id: 'company', label: 'Bedrijf', defaultVisible: true },
+  { id: 'email', label: 'E-mail', defaultVisible: false },
+  { id: 'phone', label: 'Telefoon', defaultVisible: false },
+  { id: 'location', label: 'Locatie', defaultVisible: false },
+  { id: 'source', label: 'Bron', defaultVisible: false },
+  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center' },
+  { id: 'score', label: 'Score', defaultVisible: true, align: 'center' },
+  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center' },
+  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center' },
+  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center' },
+  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center' },
+  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center' },
+  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right' },
+  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right' },
+  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center' },
+];
+
+const STORAGE_KEY = 'contacts-columns-config';
+
+function loadColumnConfig(): { order: string[]; visible: Set<string> } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { order: parsed.order, visible: new Set(parsed.visible) };
+    }
+  } catch {}
+  return {
+    order: ALL_COLUMNS.map(c => c.id),
+    visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+  };
+}
+
+function saveColumnConfig(order: string[], visible: Set<string>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ order, visible: Array.from(visible) }));
+}
+const sourceLabels: Record<string, string> = { auto: 'Auto', manual: 'Manueel', import: 'Import' };
+
+function renderCell(
+  c: Contact,
+  colId: string,
+  domainDefs: { id: string; name: string; color: string }[],
+  domainIds: string[],
+  onOpenProfile: (id: string) => void,
+): React.ReactNode {
+  switch (colId) {
+    case 'status':
+      return <div className={`w-2 h-2 rounded-full mx-auto ${statusColors[c.status]}`} />;
+    case 'name':
+      return (
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
+            <span className="text-[10px] font-semibold">
+              {c.firstName?.[0] ?? ''}{c.lastName?.[0] ?? ''}
+            </span>
+          </div>
+          <span className="font-medium text-foreground whitespace-nowrap">
+            {c.firstName} {c.lastName}
+          </span>
+          {c.isCustomer && <Star className="h-3 w-3 text-amber-400 fill-amber-400 shrink-0" />}
+        </div>
+      );
+    case 'title':
+      return <span className="text-muted-foreground">{c.title ?? '—'}</span>;
+    case 'company':
+      return <span className="text-muted-foreground">{c.company ?? '—'}</span>;
+    case 'email':
+      return c.email ? (
+        <span className="text-muted-foreground truncate max-w-[180px] block">{c.email}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'phone':
+      return c.phone ? (
+        <span className="text-muted-foreground">{c.phone}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'location':
+      return c.location ? (
+        <span className="text-muted-foreground">{c.location}</span>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'source':
+      return (
+        <Badge variant="outline" className="text-[10px] font-normal">
+          {sourceLabels[c.source] ?? c.source}
+        </Badge>
+      );
+    case 'domains':
+      return (
+        <div className="flex justify-center gap-1">
+          {domainDefs.map((dd) => (
+            <div
+              key={dd.id}
+              className="w-2.5 h-2.5 rounded-full"
+              style={{
+                background: dd.color,
+                opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
+              }}
+            />
+          ))}
+        </div>
+      );
+    case 'score':
+      return (
+        <ScorePopover contact={c} onOpenProfile={onOpenProfile}>
+          <button className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
+            {c.totalScore}
+          </button>
+        </ScorePopover>
+      );
+    case 'engagement':
+      return <span className="font-mono text-muted-foreground">{c.engagementScore}</span>;
+    case 'keywords':
+      return <span className="font-mono text-muted-foreground">{c.keywordScore}</span>;
+    case 'crossSignal':
+      return <span className="font-mono text-muted-foreground">{c.crossSignalScore}</span>;
+    case 'enrichment':
+      return <span className="font-mono text-muted-foreground">{c.enrichmentScore}</span>;
+    case 'diversity':
+      return <span className="font-mono text-muted-foreground">{c.diversityScore}</span>;
+    case 'lastSignal': {
+      const last = domainIds
+        .map((d) => c.domains[d]?.lastSignalAt)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0];
+      return (
+        <span className="text-muted-foreground">
+          {last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : '—'}
+        </span>
+      );
+    }
+    case 'addedAt':
+      return (
+        <span className="text-muted-foreground">
+          {formatDistanceToNow(new Date(c.addedAt), { addSuffix: true, locale: nl })}
+        </span>
+      );
+    case 'icons':
+      return (
+        <div className="flex items-center justify-center gap-1">
+          {c.isEnriched && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
+          {c.lemlistCampaignId && <Send className="h-3.5 w-3.5 text-sky-400" />}
+        </div>
+      );
+    default:
+      return null;
+  }
+}
 
 const statusColors: Record<Contact["status"], string> = {
   hot: "bg-red-500",
@@ -68,6 +237,88 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
   );
 }
 
+/* ───── Column settings popover ───── */
+function ColumnSettingsPopover({
+  columnOrder,
+  visibleColumns,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+  onReset,
+}: {
+  columnOrder: string[];
+  visibleColumns: Set<string>;
+  onToggle: (id: string) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
+          <Settings2 className="h-3.5 w-3.5" />
+          Kolommen
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="end">
+        <div className="p-3 border-b border-border">
+          <p className="text-xs font-semibold text-foreground">Kolommen beheren</p>
+          <p className="text-[10px] text-muted-foreground">Toon/verberg en herorden kolommen</p>
+        </div>
+        <div className="max-h-80 overflow-y-auto p-1">
+          {columnOrder.map((colId, idx) => {
+            const def = ALL_COLUMNS.find(c => c.id === colId);
+            if (!def) return null;
+            const isVisible = visibleColumns.has(colId);
+            return (
+              <div
+                key={colId}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-muted/50 group"
+              >
+                <button
+                  onClick={() => onToggle(colId)}
+                  className="shrink-0"
+                >
+                  {isVisible ? (
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5 text-muted-foreground/40" />
+                  )}
+                </button>
+                <span className={`text-xs flex-1 ${isVisible ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                  {def.label}
+                </span>
+                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => onMoveUp(colId)}
+                    disabled={idx === 0}
+                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                  >
+                    <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => onMoveDown(colId)}
+                    disabled={idx === columnOrder.length - 1}
+                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                  >
+                    <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="p-2 border-t border-border">
+          <Button size="sm" variant="ghost" className="w-full text-xs h-7" onClick={onReset}>
+            Reset naar standaard
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact, toggleCustomer } = useStore();
   const domainDefs = settings.domains ?? [];
@@ -80,6 +331,49 @@ export default function ContactsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Column config state
+  const [colConfig, setColConfig] = useState(loadColumnConfig);
+  const { order: columnOrder, visible: visibleColumns } = colConfig;
+
+  const toggleColumn = useCallback((id: string) => {
+    setColConfig(prev => {
+      const next = new Set(prev.visible);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      saveColumnConfig(prev.order, next);
+      return { order: prev.order, visible: next };
+    });
+  }, []);
+
+  const moveColumn = useCallback((id: string, dir: -1 | 1) => {
+    setColConfig(prev => {
+      const arr = [...prev.order];
+      const idx = arr.indexOf(id);
+      if (idx < 0) return prev;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= arr.length) return prev;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      saveColumnConfig(arr, prev.visible);
+      return { order: arr, visible: prev.visible };
+    });
+  }, []);
+
+  const resetColumns = useCallback(() => {
+    const def = {
+      order: ALL_COLUMNS.map(c => c.id),
+      visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+    };
+    saveColumnConfig(def.order, def.visible);
+    setColConfig(def);
+  }, []);
+
+  const activeColumns = useMemo(() =>
+    columnOrder
+      .filter(id => visibleColumns.has(id))
+      .map(id => ALL_COLUMNS.find(c => c.id === id)!)
+      .filter(Boolean),
+    [columnOrder, visibleColumns]
+  );
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -194,7 +488,6 @@ export default function ContactsPage() {
                 { key: "warm", label: "Warm" },
                 { key: "cold", label: "Cold" },
                 { key: "klanten", label: "Klanten" },
-                
               ].map((f) => (
                 <Button
                   key={f.key}
@@ -217,96 +510,55 @@ export default function ContactsPage() {
                 <SelectItem value="name">Naam A-Z</SelectItem>
               </SelectContent>
             </Select>
+            <ColumnSettingsPopover
+              columnOrder={columnOrder}
+              visibleColumns={visibleColumns}
+              onToggle={toggleColumn}
+              onMoveUp={(id) => moveColumn(id, -1)}
+              onMoveDown={(id) => moveColumn(id, 1)}
+              onReset={resetColumns}
+            />
           </div>
 
-          <Card className="bg-card border-border">
+          <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    {selectMode && <th className="p-3 w-8"></th>}
-                    <th className="text-left p-3 font-medium w-8"></th>
-                    <th className="text-left p-3 font-medium">Naam</th>
-                    <th className="text-left p-3 font-medium">Titel & Bedrijf</th>
-                    <th className="text-center p-3 font-medium">Domeinen</th>
-                    <th className="text-center p-3 font-medium">Score</th>
-                    <th className="text-right p-3 font-medium">Laatste signaal</th>
-                    <th className="text-center p-3 font-medium w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => (selectMode ? toggleSelect(c.id) : setSelectedId(c.id))}
-                    >
-                      {selectMode && (
-                        <td className="p-3">
-                          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                        </td>
-                      )}
-                      <td className="p-3">
-                        <div className={`w-2 h-2 rounded-full ${statusColors[c.status]}`} />
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-semibold">
-                              {c.firstName[0]}
-                              {c.lastName[0]}
-                            </span>
-                          </div>
-                          <span className="font-medium text-foreground">
-                            {c.firstName} {c.lastName}
-                          </span>
-                          {c.isCustomer && <Star className="h-3 w-3 text-yellow-400 fill-yellow-400 shrink-0" />}
-                        </div>
-                      </td>
-                      <td className="p-3 text-muted-foreground">
-                        {c.title}
-                        {c.company ? ` — ${c.company}` : ""}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center gap-1">
-                          {domainDefs.map((dd) => (
-                            <div
-                              key={dd.id}
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{
-                                background: dd.color,
-                                opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScorePopover contact={c} onOpenProfile={(id) => setSelectedId(id)}>
-                          <button className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
-                            {c.totalScore}
-                          </button>
-                        </ScorePopover>
-                      </td>
-                      <td className="p-3 text-right text-muted-foreground">
-                        {(() => {
-                          const last = domainIds.map((d) => c.domains[d]?.lastSignalAt)
-                            .filter(Boolean)
-                            .sort()
-                            .reverse()[0];
-                          return last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : "—";
-                        })()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {c.isEnriched && <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />}
-                          {c.lemlistCampaignId && <Send className="h-3.5 w-3.5 text-blue-400" />}
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      {selectMode && <th className="p-3 w-8"></th>}
+                      {activeColumns.map((col) => (
+                        <th
+                          key={col.id}
+                          className={`p-3 font-medium text-${col.align ?? 'left'} ${col.minWidth ?? ''}`}
+                        >
+                          {col.label}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => (selectMode ? toggleSelect(c.id) : setSelectedId(c.id))}
+                      >
+                        {selectMode && (
+                          <td className="p-3">
+                            <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                          </td>
+                        )}
+                        {activeColumns.map((col) => (
+                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'}`}>
+                            {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
 
