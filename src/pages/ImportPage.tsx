@@ -498,8 +498,26 @@ export default function ImportPage() {
             </p>
           )}
 
-          <div className="border-t border-border pt-4">
-            <p className="text-xs text-muted-foreground mb-2">Manuele Phantombuster CSV import:</p>
+          <div className="border-t border-border pt-4 space-y-3">
+            <p className="text-xs text-muted-foreground">Manuele Phantombuster CSV import:</p>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-foreground">Watchlist organisatie *</label>
+              <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Selecteer de organisatie waarvan de posts komen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {watchlistOrgs.map(org => (
+                    <SelectItem key={org.id} value={org.id} className="text-xs">
+                      {org.name} <span className="text-muted-foreground ml-1">({settings.domains.find(d => d.id === org.domain)?.name || org.domain})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground">Elk Phantombuster CSV-bestand bevat reacties op posts van één organisatie. Selecteer welke.</p>
+            </div>
+
             <div
               onDragOver={e => { e.preventDefault(); setDragActive('phantom'); }}
               onDragLeave={() => setDragActive(null)}
