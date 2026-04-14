@@ -201,8 +201,9 @@ export default function ImportPage() {
     const currentContacts = useStore.getState().contacts;
 
     phantomData.forEach(row => {
+      // Prefer profileUrl (clean URL) over profileLink (may be encoded/ACoAA format)
       const rawProfileUrl = colMap['profileUrl'] !== undefined ? row[colMap['profileUrl']]?.trim() : null;
-      if (!rawProfileUrl) return;
+      if (!rawProfileUrl || !rawProfileUrl.includes('linkedin.com/in/')) return;
       const profileUrl = normalizeLinkedInUrl(rawProfileUrl);
 
       const firstName = colMap['firstName'] !== undefined ? row[colMap['firstName']] || 'Onbekend' : 'Onbekend';
