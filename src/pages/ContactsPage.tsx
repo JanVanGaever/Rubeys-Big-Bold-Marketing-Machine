@@ -127,6 +127,88 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
   );
 }
 
+/* ───── Column settings popover ───── */
+function ColumnSettingsPopover({
+  columnOrder,
+  visibleColumns,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+  onReset,
+}: {
+  columnOrder: string[];
+  visibleColumns: Set<string>;
+  onToggle: (id: string) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
+          <Settings2 className="h-3.5 w-3.5" />
+          Kolommen
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="end">
+        <div className="p-3 border-b border-border">
+          <p className="text-xs font-semibold text-foreground">Kolommen beheren</p>
+          <p className="text-[10px] text-muted-foreground">Toon/verberg en herorden kolommen</p>
+        </div>
+        <div className="max-h-80 overflow-y-auto p-1">
+          {columnOrder.map((colId, idx) => {
+            const def = ALL_COLUMNS.find(c => c.id === colId);
+            if (!def) return null;
+            const isVisible = visibleColumns.has(colId);
+            return (
+              <div
+                key={colId}
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded hover:bg-muted/50 group"
+              >
+                <button
+                  onClick={() => onToggle(colId)}
+                  className="shrink-0"
+                >
+                  {isVisible ? (
+                    <Eye className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <EyeOff className="h-3.5 w-3.5 text-muted-foreground/40" />
+                  )}
+                </button>
+                <span className={`text-xs flex-1 ${isVisible ? 'text-foreground' : 'text-muted-foreground/50'}`}>
+                  {def.label}
+                </span>
+                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => onMoveUp(colId)}
+                    disabled={idx === 0}
+                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                  >
+                    <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={() => onMoveDown(colId)}
+                    disabled={idx === columnOrder.length - 1}
+                    className="p-0.5 rounded hover:bg-muted disabled:opacity-20"
+                  >
+                    <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="p-2 border-t border-border">
+          <Button size="sm" variant="ghost" className="w-full text-xs h-7" onClick={onReset}>
+            Reset naar standaard
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ContactsPage() {
   const { contacts, signals, settings, addContact, updateContact, toggleCustomer } = useStore();
   const domainDefs = settings.domains ?? [];
@@ -139,6 +221,49 @@ export default function ContactsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Column config state
+  const [colConfig, setColConfig] = useState(loadColumnConfig);
+  const { order: columnOrder, visible: visibleColumns } = colConfig;
+
+  const toggleColumn = useCallback((id: string) => {
+    setColConfig(prev => {
+      const next = new Set(prev.visible);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      saveColumnConfig(prev.order, next);
+      return { order: prev.order, visible: next };
+    });
+  }, []);
+
+  const moveColumn = useCallback((id: string, dir: -1 | 1) => {
+    setColConfig(prev => {
+      const arr = [...prev.order];
+      const idx = arr.indexOf(id);
+      if (idx < 0) return prev;
+      const newIdx = idx + dir;
+      if (newIdx < 0 || newIdx >= arr.length) return prev;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      saveColumnConfig(arr, prev.visible);
+      return { order: arr, visible: prev.visible };
+    });
+  }, []);
+
+  const resetColumns = useCallback(() => {
+    const def = {
+      order: ALL_COLUMNS.map(c => c.id),
+      visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+    };
+    saveColumnConfig(def.order, def.visible);
+    setColConfig(def);
+  }, []);
+
+  const activeColumns = useMemo(() =>
+    columnOrder
+      .filter(id => visibleColumns.has(id))
+      .map(id => ALL_COLUMNS.find(c => c.id === id)!)
+      .filter(Boolean),
+    [columnOrder, visibleColumns]
+  );
 
   const filtered = useMemo(() => {
     let list = contacts;
