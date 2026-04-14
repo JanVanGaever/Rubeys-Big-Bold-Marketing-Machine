@@ -48,6 +48,7 @@ export default function ImportPage() {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
   const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; errors: number } | null>(null);
+  const [isPhantomCsv, setIsPhantomCsv] = useState(false);
   const [phantomData, setPhantomData] = useState<string[][] | null>(null);
   const [phantomHeaders, setPhantomHeaders] = useState<string[]>([]);
   const [phantomResult, setPhantomResult] = useState<{ newContacts: number; updated: number; newSignals: number; skippedSignals: number } | null>(null);
@@ -73,13 +74,24 @@ export default function ImportPage() {
       setCsvData(rows);
       setImportResult(null);
       const mapping: Record<number, string> = {};
+      // Detect if this is a Phantombuster CSV
+      const lowerHeaders = headers.map(h => h.toLowerCase());
+      const isPhantom = lowerHeaders.includes('profilelink') || lowerHeaders.includes('postsurl') || lowerHeaders.includes('hasliked');
+      setIsPhantomCsv(isPhantom);
+
       headers.forEach((h, i) => {
         const lower = h.toLowerCase();
-        if (lower.includes('linkedin')) mapping[i] = 'linkedinUrl';
+        // LinkedIn URL detection — including Phantombuster column names
+        if (lower === 'profileurl' || lower === 'profile_url') mapping[i] = 'linkedinUrl';
+        else if (lower === 'profilelink' && !mapping[i]) {
+          // Only use profileLink if profileUrl isn't available
+          if (!headers.some(hh => hh.toLowerCase() === 'profileurl')) mapping[i] = 'linkedinUrl';
+        }
+        else if (lower.includes('linkedin') && !lower.includes('company')) mapping[i] = 'linkedinUrl';
         else if (lower.includes('voornaam') || lower === 'firstname' || lower === 'first_name') mapping[i] = 'firstName';
         else if (lower.includes('achternaam') || lower === 'lastname' || lower === 'last_name') mapping[i] = 'lastName';
-        else if (lower.includes('functie') || lower === 'title' || lower === 'headline') mapping[i] = 'title';
-        else if (lower.includes('bedrijf') || lower === 'company') mapping[i] = 'company';
+        else if (lower.includes('functie') || lower === 'title' || lower === 'headline' || lower === 'occupation') mapping[i] = 'title';
+        else if (lower.includes('bedrijf') || lower === 'company' || lower === 'companyname' || lower === 'company_name') mapping[i] = 'company';
         else if (lower.includes('email') || lower.includes('e-mail')) mapping[i] = 'email';
         else if (lower.includes('telefoon') || lower === 'phone') mapping[i] = 'phone';
         else if (lower.includes('domein') || lower === 'domain') mapping[i] = 'domain';
