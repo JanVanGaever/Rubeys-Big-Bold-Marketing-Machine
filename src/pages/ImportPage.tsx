@@ -183,7 +183,8 @@ export default function ImportPage() {
     const colMap: Record<string, number> = {};
     phantomHeaders.forEach((h, i) => {
       const lower = h.toLowerCase().trim();
-      if (lower === 'profilelink' || lower === 'profileurl' || lower === 'profile_url') colMap['profileUrl'] = i;
+      if (lower === 'profileurl' || lower === 'profile_url') colMap['profileUrl'] = i;
+      else if (lower === 'profilelink') { if (colMap['profileUrl'] === undefined) colMap['profileUrl'] = i; }
       else if (lower === 'firstname' || lower === 'first_name') colMap['firstName'] = i;
       else if (lower === 'lastname' || lower === 'last_name') colMap['lastName'] = i;
       else if (lower === 'occupation' || lower === 'headline') colMap['headline'] = i;
