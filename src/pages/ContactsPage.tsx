@@ -378,7 +378,6 @@ export default function ContactsPage() {
                 { key: "warm", label: "Warm" },
                 { key: "cold", label: "Cold" },
                 { key: "klanten", label: "Klanten" },
-                
               ].map((f) => (
                 <Button
                   key={f.key}
@@ -401,96 +400,55 @@ export default function ContactsPage() {
                 <SelectItem value="name">Naam A-Z</SelectItem>
               </SelectContent>
             </Select>
+            <ColumnSettingsPopover
+              columnOrder={columnOrder}
+              visibleColumns={visibleColumns}
+              onToggle={toggleColumn}
+              onMoveUp={(id) => moveColumn(id, -1)}
+              onMoveDown={(id) => moveColumn(id, 1)}
+              onReset={resetColumns}
+            />
           </div>
 
-          <Card className="bg-card border-border">
+          <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    {selectMode && <th className="p-3 w-8"></th>}
-                    <th className="text-left p-3 font-medium w-8"></th>
-                    <th className="text-left p-3 font-medium">Naam</th>
-                    <th className="text-left p-3 font-medium">Titel & Bedrijf</th>
-                    <th className="text-center p-3 font-medium">Domeinen</th>
-                    <th className="text-center p-3 font-medium">Score</th>
-                    <th className="text-right p-3 font-medium">Laatste signaal</th>
-                    <th className="text-center p-3 font-medium w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                      onClick={() => (selectMode ? toggleSelect(c.id) : setSelectedId(c.id))}
-                    >
-                      {selectMode && (
-                        <td className="p-3">
-                          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                        </td>
-                      )}
-                      <td className="p-3">
-                        <div className={`w-2 h-2 rounded-full ${statusColors[c.status]}`} />
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-semibold">
-                              {c.firstName[0]}
-                              {c.lastName[0]}
-                            </span>
-                          </div>
-                          <span className="font-medium text-foreground">
-                            {c.firstName} {c.lastName}
-                          </span>
-                          {c.isCustomer && <Star className="h-3 w-3 text-yellow-400 fill-yellow-400 shrink-0" />}
-                        </div>
-                      </td>
-                      <td className="p-3 text-muted-foreground">
-                        {c.title}
-                        {c.company ? ` — ${c.company}` : ""}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex justify-center gap-1">
-                          {domainDefs.map((dd) => (
-                            <div
-                              key={dd.id}
-                              className="w-2.5 h-2.5 rounded-full"
-                              style={{
-                                background: dd.color,
-                                opacity: (c.domains[dd.id]?.signalCount ?? 0) > 0 ? 1 : 0.15,
-                              }}
-                            />
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-3 text-center">
-                        <ScorePopover contact={c} onOpenProfile={(id) => setSelectedId(id)}>
-                          <button className="font-semibold text-foreground hover:text-primary transition-colors cursor-pointer">
-                            {c.totalScore}
-                          </button>
-                        </ScorePopover>
-                      </td>
-                      <td className="p-3 text-right text-muted-foreground">
-                        {(() => {
-                          const last = domainIds.map((d) => c.domains[d]?.lastSignalAt)
-                            .filter(Boolean)
-                            .sort()
-                            .reverse()[0];
-                          return last ? formatDistanceToNow(new Date(last), { addSuffix: true, locale: nl }) : "—";
-                        })()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {c.isEnriched && <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />}
-                          {c.lemlistCampaignId && <Send className="h-3.5 w-3.5 text-blue-400" />}
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      {selectMode && <th className="p-3 w-8"></th>}
+                      {activeColumns.map((col) => (
+                        <th
+                          key={col.id}
+                          className={`p-3 font-medium text-${col.align ?? 'left'} ${col.minWidth ?? ''}`}
+                        >
+                          {col.label}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        onClick={() => (selectMode ? toggleSelect(c.id) : setSelectedId(c.id))}
+                      >
+                        {selectMode && (
+                          <td className="p-3">
+                            <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                          </td>
+                        )}
+                        {activeColumns.map((col) => (
+                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'}`}>
+                            {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
 
