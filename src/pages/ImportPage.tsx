@@ -57,9 +57,11 @@ export default function ImportPage() {
   const phantomRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = (text: string): { headers: string[]; rows: string[][] } => {
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+    const result = Papa.parse(text, { header: false, skipEmptyLines: true });
+    const data = result.data as string[][];
+    if (data.length === 0) return { headers: [], rows: [] };
+    const headers = data[0].map(h => h.trim().replace(/^"|"$/g, ''));
+    const rows = data.slice(1);
     return { headers, rows };
   };
 
@@ -180,15 +182,17 @@ export default function ImportPage() {
     // Auto-detect column mapping
     const colMap: Record<string, number> = {};
     phantomHeaders.forEach((h, i) => {
-      const lower = h.toLowerCase();
-      if (lower === 'profileurl' || lower === 'profile_url' || lower.includes('linkedin')) colMap['profileUrl'] = i;
+      const lower = h.toLowerCase().trim();
+      if (lower === 'profilelink' || lower === 'profileurl' || lower === 'profile_url') colMap['profileUrl'] = i;
       else if (lower === 'firstname' || lower === 'first_name') colMap['firstName'] = i;
       else if (lower === 'lastname' || lower === 'last_name') colMap['lastName'] = i;
-      else if (lower === 'headline') colMap['headline'] = i;
+      else if (lower === 'occupation' || lower === 'headline') colMap['headline'] = i;
       else if (lower === 'companyname' || lower === 'company_name' || lower === 'company') colMap['companyName'] = i;
-      else if (lower === 'posturl' || lower === 'post_url') colMap['postUrl'] = i;
+      else if (lower === 'postsurl' || lower === 'posturl' || lower === 'post_url') colMap['postUrl'] = i;
+      else if (lower === 'hasliked') colMap['hasLiked'] = i;
+      else if (lower === 'hascommented') colMap['hasCommented'] = i;
       else if (lower === 'action') colMap['action'] = i;
-      else if (lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
+      else if (lower === 'comments' || lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
       else if (lower === 'timestamp') colMap['timestamp'] = i;
     });
 
