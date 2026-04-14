@@ -557,20 +557,17 @@ export default function ImportPage() {
                     <span className="text-green-400">{phantomResult.newContacts} nieuwe contacten</span>
                     <span className="text-blue-400">{phantomResult.updated} bestaande contacten bijgewerkt</span>
                     <span className="text-primary">{phantomResult.newSignals} nieuwe signalen aangemaakt</span>
-                    {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} signalen overgeslagen (geen org match)</span>}
+                    {phantomResult.skippedSignals > 0 && <span className="text-muted-foreground">{phantomResult.skippedSignals} rijen zonder post-URL overgeslagen</span>}
                   </div>
-                  {phantomResult.skippedSignals > 0 && phantomResult.skippedSignals > (phantomResult.newSignals + phantomResult.skippedSignals) / 2 && (
-                    <div className="flex items-start gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
-                      <p className="text-[10px] text-yellow-400">
-                        Meer dan de helft van de signalen kon niet gematcht worden aan een watchlist-organisatie. Controleer of de organisatienamen in je watchlist overeenkomen met de LinkedIn company slugs.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
               {!phantomImporting && (
-                <Button size="sm" onClick={doPhantomImport}>Importeer Phantombuster data</Button>
+                <div className="flex gap-2 items-center">
+                  <Button size="sm" onClick={doPhantomImport} disabled={!selectedOrgId}>
+                    Importeer Phantombuster data
+                  </Button>
+                  {!selectedOrgId && <span className="text-[10px] text-muted-foreground">Selecteer eerst een organisatie hierboven</span>}
+                </div>
               )}
             </div>
           )}
