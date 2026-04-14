@@ -203,7 +203,7 @@ function renderCell(
   }
 }
 
-
+const statusColors: Record<Contact["status"], string> = {
   hot: "bg-red-500",
   warm: "bg-amber-500",
   cold: "bg-muted-foreground/40",
