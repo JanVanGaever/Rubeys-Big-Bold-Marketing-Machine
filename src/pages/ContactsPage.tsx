@@ -112,14 +112,14 @@ function renderCell(
               {c.firstName?.[0] ?? ''}{c.lastName?.[0] ?? ''}
             </span>
           </div>
-          <span className="font-medium text-foreground whitespace-nowrap">
+          <span className="font-medium text-foreground truncate max-w-[200px]">
             {c.firstName} {c.lastName}
           </span>
           {c.isCustomer && <Star className="h-3 w-3 text-amber-400 fill-amber-400 shrink-0" />}
         </div>
       );
     case 'title':
-      return <span className="text-muted-foreground">{c.title ?? '—'}</span>;
+      return <span className="text-muted-foreground truncate max-w-[250px] block">{c.title ?? '—'}</span>;
     case 'company':
       return <span className="text-muted-foreground">{c.company ?? '—'}</span>;
     case 'email':
