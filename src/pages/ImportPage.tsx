@@ -343,9 +343,14 @@ export default function ImportPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Import</h1>
-        <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Import</h1>
+          <p className="text-xs text-muted-foreground">Importeer leads en organisaties vanuit externe bronnen</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => { initialize(); toast.info('Data herladen vanuit database'); }}>
+          <RefreshCw className="h-3 w-3 mr-1" /> Herlaad data
+        </Button>
       </div>
 
       <ConnectionAlert connectionId="phantombuster" featureName="Phantombuster Import" />
