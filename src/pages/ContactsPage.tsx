@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -15,6 +15,14 @@ import {
   Upload,
   Star,
   CheckSquare,
+  Settings2,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  EyeOff,
+  MapPin,
+  Globe,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { getDomainColor, getDomainName } from "@/types";
@@ -31,8 +39,59 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { normalizeLinkedInUrl } from "@/lib/normalize";
+
+/* ───── Column definitions ───── */
+interface ColumnDef {
+  id: string;
+  label: string;
+  defaultVisible: boolean;
+  align?: 'left' | 'center' | 'right';
+  minWidth?: string;
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', minWidth: 'w-10' },
+  { id: 'name', label: 'Naam', defaultVisible: true },
+  { id: 'title', label: 'Titel', defaultVisible: true },
+  { id: 'company', label: 'Bedrijf', defaultVisible: true },
+  { id: 'email', label: 'E-mail', defaultVisible: false },
+  { id: 'phone', label: 'Telefoon', defaultVisible: false },
+  { id: 'location', label: 'Locatie', defaultVisible: false },
+  { id: 'source', label: 'Bron', defaultVisible: false },
+  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center' },
+  { id: 'score', label: 'Score', defaultVisible: true, align: 'center' },
+  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center' },
+  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center' },
+  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center' },
+  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center' },
+  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center' },
+  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right' },
+  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right' },
+  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center' },
+];
+
+const STORAGE_KEY = 'contacts-columns-config';
+
+function loadColumnConfig(): { order: string[]; visible: Set<string> } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { order: parsed.order, visible: new Set(parsed.visible) };
+    }
+  } catch {}
+  return {
+    order: ALL_COLUMNS.map(c => c.id),
+    visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+  };
+}
+
+function saveColumnConfig(order: string[], visible: Set<string>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ order, visible: Array.from(visible) }));
+}
 
 const statusColors: Record<Contact["status"], string> = {
   hot: "bg-red-500",
