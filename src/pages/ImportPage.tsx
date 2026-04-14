@@ -273,13 +273,17 @@ export default function ImportPage() {
         }
       }
 
-      // Try to create signals by matching postUrl(s) to watchlist orgs
+      // Create signals using the selected watchlist org
+      const selectedOrg = watchlistOrgs.find(o => o.id === selectedOrgId);
+      if (!selectedOrg) {
+        skippedSignals++;
+        return;
+      }
+
       const rawPostUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']]?.trim() : null;
       if (rawPostUrl) {
-        // postsUrl can contain multiple URLs separated by ' | '
         const postUrls = rawPostUrl.split(' | ').map(u => u.trim()).filter(Boolean);
 
-        // Determine engagement type from hasLiked/hasCommented or action
         let engagementType: 'like' | 'comment' = 'like';
         if (colMap['action'] !== undefined) {
           engagementType = row[colMap['action']]?.toLowerCase() === 'comment' ? 'comment' : 'like';
@@ -290,41 +294,23 @@ export default function ImportPage() {
         const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
         const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
 
-        let matchedAny = false;
         for (const postUrl of postUrls) {
-          // Extract org name from postUrl patterns
-          const postMatch = postUrl.match(/\/posts\/([^_]+)/i) || postUrl.match(/\/company\/([^/]+)/i);
-          const postOrgSlug = postMatch?.[1]?.toLowerCase();
-
-          let matchedOrg = null;
-          if (postOrgSlug) {
-            matchedOrg = watchlistOrgs.find(o => {
-              const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-              const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
-              return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
-            });
-          }
-
-          if (matchedOrg) {
-            addSignal({
-              id: `phantom-sig-${Date.now()}-${newSignals}`,
-              contactLinkedinUrl: profileUrl,
-              contactName: `${firstName} ${lastName}`,
-              contactTitle: headline,
-              orgId: matchedOrg.id,
-              orgName: matchedOrg.name,
-              domain: matchedOrg.domain,
-              tier: matchedOrg.tier,
-              engagementType,
-              commentText,
-              detectedAt: timestamp || new Date().toISOString(),
-              postUrl,
-            });
-            newSignals++;
-            matchedAny = true;
-          }
+          addSignal({
+            id: `phantom-sig-${Date.now()}-${newSignals}`,
+            contactLinkedinUrl: profileUrl,
+            contactName: `${firstName} ${lastName}`,
+            contactTitle: headline,
+            orgId: selectedOrg.id,
+            orgName: selectedOrg.name,
+            domain: selectedOrg.domain,
+            tier: selectedOrg.tier,
+            engagementType,
+            commentText,
+            detectedAt: timestamp || new Date().toISOString(),
+            postUrl,
+          });
+          newSignals++;
         }
-        if (!matchedAny) skippedSignals++;
       } else {
         skippedSignals++;
       }
