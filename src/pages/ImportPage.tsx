@@ -257,45 +257,58 @@ export default function ImportPage() {
         }
       }
 
-      // Try to create a signal by matching postUrl to a watchlist org
-      const postUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']] : null;
-      if (postUrl) {
-        // Extract org name from postUrl: linkedin.com/posts/orgname_...
-        const postMatch = postUrl.match(/\/posts\/([^_]+)/i);
-        const postOrgSlug = postMatch?.[1]?.toLowerCase();
+      // Try to create signals by matching postUrl(s) to watchlist orgs
+      const rawPostUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']]?.trim() : null;
+      if (rawPostUrl) {
+        // postsUrl can contain multiple URLs separated by ' | '
+        const postUrls = rawPostUrl.split(' | ').map(u => u.trim()).filter(Boolean);
 
-        let matchedOrg = null;
-        if (postOrgSlug) {
-          matchedOrg = watchlistOrgs.find(o => {
-            const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
-            return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
-          });
+        // Determine engagement type from hasLiked/hasCommented or action
+        let engagementType: 'like' | 'comment' = 'like';
+        if (colMap['action'] !== undefined) {
+          engagementType = row[colMap['action']]?.toLowerCase() === 'comment' ? 'comment' : 'like';
+        } else if (colMap['hasCommented'] !== undefined && row[colMap['hasCommented']]?.toLowerCase() === 'true') {
+          engagementType = 'comment';
         }
 
-        if (matchedOrg) {
-          const action = colMap['action'] !== undefined ? row[colMap['action']]?.toLowerCase() : 'like';
-          const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
-          const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
+        const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
+        const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
 
-          addSignal({
-            id: `phantom-sig-${Date.now()}-${newSignals}`,
-            contactLinkedinUrl: profileUrl,
-            contactName: `${firstName} ${lastName}`,
-            contactTitle: headline,
-            orgId: matchedOrg.id,
-            orgName: matchedOrg.name,
-            domain: matchedOrg.domain,
-            tier: matchedOrg.tier,
-            engagementType: action === 'comment' ? 'comment' : 'like',
-            commentText,
-            detectedAt: timestamp || new Date().toISOString(),
-            postUrl,
-          });
-          newSignals++;
-        } else {
-          skippedSignals++;
+        let matchedAny = false;
+        for (const postUrl of postUrls) {
+          // Extract org name from postUrl patterns
+          const postMatch = postUrl.match(/\/posts\/([^_]+)/i) || postUrl.match(/\/company\/([^/]+)/i);
+          const postOrgSlug = postMatch?.[1]?.toLowerCase();
+
+          let matchedOrg = null;
+          if (postOrgSlug) {
+            matchedOrg = watchlistOrgs.find(o => {
+              const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
+              return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
+            });
+          }
+
+          if (matchedOrg) {
+            addSignal({
+              id: `phantom-sig-${Date.now()}-${newSignals}`,
+              contactLinkedinUrl: profileUrl,
+              contactName: `${firstName} ${lastName}`,
+              contactTitle: headline,
+              orgId: matchedOrg.id,
+              orgName: matchedOrg.name,
+              domain: matchedOrg.domain,
+              tier: matchedOrg.tier,
+              engagementType,
+              commentText,
+              detectedAt: timestamp || new Date().toISOString(),
+              postUrl,
+            });
+            newSignals++;
+            matchedAny = true;
+          }
         }
+        if (!matchedAny) skippedSignals++;
       } else {
         skippedSignals++;
       }
