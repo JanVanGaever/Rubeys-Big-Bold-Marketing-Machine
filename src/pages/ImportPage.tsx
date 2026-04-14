@@ -38,7 +38,7 @@ function relativeTime(iso: string) {
 }
 
 export default function ImportPage() {
-  const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings } = useStore();
+  const { contacts, addContact, updateContact, addSignal, watchlistOrgs, importHistory, addImportRecord, recomputeScores, settings, initialize } = useStore();
   const n8nConfig = useConnectionStore(s => s.connections.find(c => c.id === 'n8n')?.config);
   const phantomConfig = useConnectionStore(s => s.connections.find(c => c.id === 'phantombuster')?.config);
   const n8nBaseUrl = n8nConfig?.webhookUrl?.replace(/\/$/, '') || '';
@@ -53,6 +53,7 @@ export default function ImportPage() {
   const [phantomHeaders, setPhantomHeaders] = useState<string[]>([]);
   const [phantomResult, setPhantomResult] = useState<{ newContacts: number; updated: number; newSignals: number; skippedSignals: number } | null>(null);
   const [phantomImporting, setPhantomImporting] = useState(false);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [dragActive, setDragActive] = useState<'csv' | 'phantom' | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
   const phantomRef = useRef<HTMLInputElement>(null);
