@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import * as Papa from 'papaparse';
 import { useStore } from '@/store/useStore';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,9 +57,11 @@ export default function ImportPage() {
   const phantomRef = useRef<HTMLInputElement>(null);
 
   const parseCSV = (text: string): { headers: string[]; rows: string[][] } => {
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-    const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+    const result = Papa.parse(text, { header: false, skipEmptyLines: true });
+    const data = result.data as string[][];
+    if (data.length === 0) return { headers: [], rows: [] };
+    const headers = data[0].map(h => h.trim().replace(/^"|"$/g, ''));
+    const rows = data.slice(1);
     return { headers, rows };
   };
 
@@ -179,15 +182,18 @@ export default function ImportPage() {
     // Auto-detect column mapping
     const colMap: Record<string, number> = {};
     phantomHeaders.forEach((h, i) => {
-      const lower = h.toLowerCase();
-      if (lower === 'profileurl' || lower === 'profile_url' || lower.includes('linkedin')) colMap['profileUrl'] = i;
+      const lower = h.toLowerCase().trim();
+      if (lower === 'profileurl' || lower === 'profile_url') colMap['profileUrl'] = i;
+      else if (lower === 'profilelink') { if (colMap['profileUrl'] === undefined) colMap['profileUrl'] = i; }
       else if (lower === 'firstname' || lower === 'first_name') colMap['firstName'] = i;
       else if (lower === 'lastname' || lower === 'last_name') colMap['lastName'] = i;
-      else if (lower === 'headline') colMap['headline'] = i;
+      else if (lower === 'occupation' || lower === 'headline') colMap['headline'] = i;
       else if (lower === 'companyname' || lower === 'company_name' || lower === 'company') colMap['companyName'] = i;
-      else if (lower === 'posturl' || lower === 'post_url') colMap['postUrl'] = i;
+      else if (lower === 'postsurl' || lower === 'posturl' || lower === 'post_url') colMap['postUrl'] = i;
+      else if (lower === 'hasliked') colMap['hasLiked'] = i;
+      else if (lower === 'hascommented') colMap['hasCommented'] = i;
       else if (lower === 'action') colMap['action'] = i;
-      else if (lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
+      else if (lower === 'comments' || lower === 'commentcontent' || lower === 'comment_content' || lower === 'comment') colMap['commentContent'] = i;
       else if (lower === 'timestamp') colMap['timestamp'] = i;
     });
 
@@ -196,8 +202,9 @@ export default function ImportPage() {
     const currentContacts = useStore.getState().contacts;
 
     phantomData.forEach(row => {
+      // Prefer profileUrl (clean URL) over profileLink (may be encoded/ACoAA format)
       const rawProfileUrl = colMap['profileUrl'] !== undefined ? row[colMap['profileUrl']]?.trim() : null;
-      if (!rawProfileUrl) return;
+      if (!rawProfileUrl || !rawProfileUrl.includes('linkedin.com/in/')) return;
       const profileUrl = normalizeLinkedInUrl(rawProfileUrl);
 
       const firstName = colMap['firstName'] !== undefined ? row[colMap['firstName']] || 'Onbekend' : 'Onbekend';
@@ -252,45 +259,58 @@ export default function ImportPage() {
         }
       }
 
-      // Try to create a signal by matching postUrl to a watchlist org
-      const postUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']] : null;
-      if (postUrl) {
-        // Extract org name from postUrl: linkedin.com/posts/orgname_...
-        const postMatch = postUrl.match(/\/posts\/([^_]+)/i);
-        const postOrgSlug = postMatch?.[1]?.toLowerCase();
+      // Try to create signals by matching postUrl(s) to watchlist orgs
+      const rawPostUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']]?.trim() : null;
+      if (rawPostUrl) {
+        // postsUrl can contain multiple URLs separated by ' | '
+        const postUrls = rawPostUrl.split(' | ').map(u => u.trim()).filter(Boolean);
 
-        let matchedOrg = null;
-        if (postOrgSlug) {
-          matchedOrg = watchlistOrgs.find(o => {
-            const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-            const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
-            return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
-          });
+        // Determine engagement type from hasLiked/hasCommented or action
+        let engagementType: 'like' | 'comment' = 'like';
+        if (colMap['action'] !== undefined) {
+          engagementType = row[colMap['action']]?.toLowerCase() === 'comment' ? 'comment' : 'like';
+        } else if (colMap['hasCommented'] !== undefined && row[colMap['hasCommented']]?.toLowerCase() === 'true') {
+          engagementType = 'comment';
         }
 
-        if (matchedOrg) {
-          const action = colMap['action'] !== undefined ? row[colMap['action']]?.toLowerCase() : 'like';
-          const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
-          const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
+        const commentText = colMap['commentContent'] !== undefined ? row[colMap['commentContent']] || null : null;
+        const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
 
-          addSignal({
-            id: `phantom-sig-${Date.now()}-${newSignals}`,
-            contactLinkedinUrl: profileUrl,
-            contactName: `${firstName} ${lastName}`,
-            contactTitle: headline,
-            orgId: matchedOrg.id,
-            orgName: matchedOrg.name,
-            domain: matchedOrg.domain,
-            tier: matchedOrg.tier,
-            engagementType: action === 'comment' ? 'comment' : 'like',
-            commentText,
-            detectedAt: timestamp || new Date().toISOString(),
-            postUrl,
-          });
-          newSignals++;
-        } else {
-          skippedSignals++;
+        let matchedAny = false;
+        for (const postUrl of postUrls) {
+          // Extract org name from postUrl patterns
+          const postMatch = postUrl.match(/\/posts\/([^_]+)/i) || postUrl.match(/\/company\/([^/]+)/i);
+          const postOrgSlug = postMatch?.[1]?.toLowerCase();
+
+          let matchedOrg = null;
+          if (postOrgSlug) {
+            matchedOrg = watchlistOrgs.find(o => {
+              const nameSlug = o.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const urlSlug = o.linkedinUrl.toLowerCase().split('/company/')[1]?.replace(/\//g, '') || '';
+              return nameSlug === postOrgSlug || urlSlug === postOrgSlug;
+            });
+          }
+
+          if (matchedOrg) {
+            addSignal({
+              id: `phantom-sig-${Date.now()}-${newSignals}`,
+              contactLinkedinUrl: profileUrl,
+              contactName: `${firstName} ${lastName}`,
+              contactTitle: headline,
+              orgId: matchedOrg.id,
+              orgName: matchedOrg.name,
+              domain: matchedOrg.domain,
+              tier: matchedOrg.tier,
+              engagementType,
+              commentText,
+              detectedAt: timestamp || new Date().toISOString(),
+              postUrl,
+            });
+            newSignals++;
+            matchedAny = true;
+          }
         }
+        if (!matchedAny) skippedSignals++;
       } else {
         skippedSignals++;
       }
