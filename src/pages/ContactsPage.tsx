@@ -651,16 +651,28 @@ export default function ContactsPage() {
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+                  <colgroup>
+                    {selectMode && <col style={{ width: 40 }} />}
+                    {activeColumns.map((col) => (
+                      <col key={col.id} style={{ width: columnWidths[col.id] ?? col.defaultWidth ?? 120 }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
                       {selectMode && <th className="p-3 w-8"></th>}
                       {activeColumns.map((col) => (
                         <th
                           key={col.id}
-                          className={`p-3 font-medium text-${col.align ?? 'left'} ${col.minWidth ?? ''}`}
+                          className={`p-3 font-medium text-${col.align ?? 'left'} relative select-none`}
                         >
-                          {col.label}
+                          <span className="truncate block">{col.label}</span>
+                          <ResizeHandle
+                            onResize={(delta) => {
+                              const currentWidth = columnWidths[col.id] ?? col.defaultWidth ?? 120;
+                              setColumnWidth(col.id, currentWidth + delta);
+                            }}
+                          />
                         </th>
                       ))}
                     </tr>
@@ -678,8 +690,10 @@ export default function ContactsPage() {
                           </td>
                         )}
                         {activeColumns.map((col) => (
-                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'}`}>
-                            {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'} overflow-hidden`}>
+                            <div className="truncate">
+                              {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                            </div>
                           </td>
                         ))}
                       </tr>
