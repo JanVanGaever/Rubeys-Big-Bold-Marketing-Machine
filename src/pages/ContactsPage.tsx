@@ -270,13 +270,14 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 }
 
 /* ───── Resize handle component ───── */
-function ResizeHandle({ onResize }: { onResize: (delta: number) => void }) {
+function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) => void }) {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
+    const onDrag = onResizeStart();
     const handleMouseMove = (me: MouseEvent) => {
-      onResize(me.clientX - startX);
+      onDrag(me.clientX - startX);
     };
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
