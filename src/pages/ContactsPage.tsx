@@ -885,6 +885,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       enrichmentSource: 'none',
       emailVerifiedByDropcontact: false,
       dropcontactEnrichedAt: null,
+      companyLinkedinUrl: null,
     };
     addContact(newContact);
     setForm({

@@ -267,6 +267,7 @@ export function buildContacts(signals: Signal[], hotThreshold: number): Contact[
       enrichmentSource: c.enriched ? 'apollo' : 'none',
       emailVerifiedByDropcontact: false,
       dropcontactEnrichedAt: null,
+      companyLinkedinUrl: null,
     });
   });
 
