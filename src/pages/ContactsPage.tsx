@@ -669,9 +669,9 @@ export default function ContactsPage() {
                         >
                           <span className="truncate block">{col.label}</span>
                           <ResizeHandle
-                            onResize={(delta) => {
+                            onResizeStart={() => {
                               const baseWidth = columnWidths[col.id] ?? col.defaultWidth ?? 120;
-                              setColumnWidth(col.id, baseWidth + delta);
+                              return (delta: number) => setColumnWidth(col.id, baseWidth + delta);
                             }}
                           />
                         </th>
