@@ -438,6 +438,8 @@ export default function ContactsPage() {
   // Column config state
   const [colConfig, setColConfig] = useState(loadColumnConfig);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
   const { order: columnOrder, visible: visibleColumns, widths: columnWidths } = colConfig;
 
   const updateConfig = useCallback((updater: (prev: ColumnConfig) => ColumnConfig) => {
@@ -595,6 +597,12 @@ export default function ContactsPage() {
     else sorted.sort((a, b) => a.lastName.localeCompare(b.lastName));
     return sorted;
   }, [contacts, search, statusFilter, sort]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [search, statusFilter, sort]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page, PAGE_SIZE]);
 
   const selected = contacts.find((c) => c.id === selectedId) ?? null;
   const w = settings.scoreWeights;
@@ -772,7 +780,7 @@ export default function ContactsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((c) => (
+                    {paged.map((c) => (
                       <tr
                         key={c.id}
                         className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
@@ -797,6 +805,31 @@ export default function ContactsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs text-muted-foreground">
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} van {filtered.length}
+              </span>
+              <div className="flex items-center gap-1">
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Vorige</Button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let p: number;
+                  if (totalPages <= 7) p = i;
+                  else if (page < 3) p = i;
+                  else if (page > totalPages - 4) p = totalPages - 7 + i;
+                  else p = page - 3 + i;
+                  return (
+                    <Button key={p} size="sm" variant={p === page ? "default" : "outline"} className="h-7 w-7 text-xs p-0" onClick={() => setPage(p)}>
+                      {p + 1}
+                    </Button>
+                  );
+                })}
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Volgende</Button>
+              </div>
+            </div>
+          )}
 
           {/* Multi-select action bar */}
           {selectMode && selectedIds.size > 0 && (
