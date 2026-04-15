@@ -500,6 +500,34 @@ export default function ContactsPage() {
     }));
   }, [updateConfig]);
 
+  const handleColumnDragStart = useCallback((colId: string) => {
+    setDragColId(colId);
+  }, []);
+
+  const handleColumnDragOver = useCallback((e: React.DragEvent, colId: string) => {
+    e.preventDefault();
+    setDragOverColId(colId);
+  }, []);
+
+  const handleColumnDrop = useCallback((targetColId: string) => {
+    if (!dragColId || dragColId === targetColId) {
+      setDragColId(null);
+      setDragOverColId(null);
+      return;
+    }
+    updateConfig(prev => {
+      const arr = [...prev.order];
+      const fromIdx = arr.indexOf(dragColId);
+      const toIdx = arr.indexOf(targetColId);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, dragColId);
+      return { ...prev, order: arr };
+    });
+    setDragColId(null);
+    setDragOverColId(null);
+  }, [dragColId, updateConfig]);
+
   const tableRef = useRef<HTMLTableElement>(null);
 
   const activeColumns = useMemo(() =>
