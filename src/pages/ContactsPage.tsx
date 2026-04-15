@@ -623,8 +623,24 @@ export default function ContactsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Contacten</h1>
-          <p className="text-xs text-muted-foreground">{contacts.length} leads in database</p>
+          <p className="text-xs text-muted-foreground">{filtered.length} van {contacts.length} leads</p>
         </div>
+      </div>
+
+      {/* Tellers */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {[
+          { label: 'Totaal', value: contacts.length, color: 'bg-muted text-foreground' },
+          { label: 'Hot', value: contacts.filter(c => c.status === 'hot').length, color: 'bg-red-500/15 text-red-400 border border-red-500/30' },
+          { label: 'Warm', value: contacts.filter(c => c.status === 'warm').length, color: 'bg-orange-500/15 text-orange-400 border border-orange-500/30' },
+          { label: 'Cold', value: contacts.filter(c => c.status === 'cold').length, color: 'bg-blue-500/15 text-blue-400 border border-blue-500/30' },
+          { label: 'Verrijkt', value: contacts.filter(c => c.isEnriched).length, color: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' },
+          { label: 'Klant', value: contacts.filter(c => c.isCustomer).length, color: 'bg-amber-500/15 text-amber-400 border border-amber-500/30' },
+        ].map(t => (
+          <div key={t.label} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${t.color}`}>
+            {t.label} <span className="font-bold ml-1">{t.value}</span>
+          </div>
+        ))}
         <div className="flex items-center gap-2">
           <Button
             size="sm"
