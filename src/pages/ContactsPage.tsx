@@ -57,6 +57,8 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: 'name', label: 'Naam', defaultVisible: true },
   { id: 'title', label: 'Titel', defaultVisible: true },
   { id: 'company', label: 'Bedrijf', defaultVisible: true },
+  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false },
+  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false },
   { id: 'email', label: 'E-mail', defaultVisible: false },
   { id: 'phone', label: 'Telefoon', defaultVisible: false },
   { id: 'location', label: 'Locatie', defaultVisible: false },
