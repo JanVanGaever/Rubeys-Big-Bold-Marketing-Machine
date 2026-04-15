@@ -366,38 +366,68 @@ export default function ContactsPage() {
 
   // Column config state
   const [colConfig, setColConfig] = useState(loadColumnConfig);
-  const { order: columnOrder, visible: visibleColumns } = colConfig;
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { order: columnOrder, visible: visibleColumns, widths: columnWidths } = colConfig;
 
-  const toggleColumn = useCallback((id: string) => {
+  const updateConfig = useCallback((updater: (prev: ColumnConfig) => ColumnConfig) => {
     setColConfig(prev => {
-      const next = new Set(prev.visible);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      saveColumnConfig(prev.order, next);
-      return { order: prev.order, visible: next };
+      const next = updater(prev);
+      setHasUnsavedChanges(true);
+      return next;
     });
   }, []);
 
+  const toggleColumn = useCallback((id: string) => {
+    updateConfig(prev => {
+      const next = new Set(prev.visible);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return { ...prev, visible: next };
+    });
+  }, [updateConfig]);
+
   const moveColumn = useCallback((id: string, dir: -1 | 1) => {
-    setColConfig(prev => {
+    updateConfig(prev => {
       const arr = [...prev.order];
       const idx = arr.indexOf(id);
       if (idx < 0) return prev;
       const newIdx = idx + dir;
       if (newIdx < 0 || newIdx >= arr.length) return prev;
       [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-      saveColumnConfig(arr, prev.visible);
-      return { order: arr, visible: prev.visible };
+      return { ...prev, order: arr };
     });
-  }, []);
+  }, [updateConfig]);
+
+  const setColumnWidth = useCallback((id: string, width: number) => {
+    updateConfig(prev => ({
+      ...prev,
+      widths: { ...prev.widths, [id]: Math.max(40, width) },
+    }));
+  }, [updateConfig]);
 
   const resetColumns = useCallback(() => {
-    const def = {
+    const def: ColumnConfig = {
       order: ALL_COLUMNS.map(c => c.id),
       visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+      widths: { ...DEFAULT_WIDTHS },
     };
-    saveColumnConfig(def.order, def.visible);
+    saveColumnConfig(def);
     setColConfig(def);
+    setHasUnsavedChanges(false);
+    toast.success('Kolominstellingen gereset');
   }, []);
+
+  const saveColumns = useCallback(() => {
+    saveColumnConfig(colConfig);
+    setHasUnsavedChanges(false);
+    toast.success('Kolominstellingen opgeslagen');
+  }, [colConfig]);
+
+  const autoFitColumns = useCallback(() => {
+    updateConfig(prev => ({
+      ...prev,
+      widths: { ...DEFAULT_WIDTHS },
+    }));
+  }, [updateConfig]);
 
   const activeColumns = useMemo(() =>
     columnOrder
