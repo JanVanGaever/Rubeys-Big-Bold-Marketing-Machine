@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -23,6 +23,9 @@ import {
   EyeOff,
   MapPin,
   Globe,
+  Save,
+  RotateCcw,
+  Maximize2,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { getDomainColor, getDomainName } from "@/types";
@@ -49,50 +52,69 @@ interface ColumnDef {
   label: string;
   defaultVisible: boolean;
   align?: 'left' | 'center' | 'right';
-  minWidth?: string;
+  defaultWidth?: number;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', minWidth: 'w-10' },
-  { id: 'name', label: 'Naam', defaultVisible: true },
-  { id: 'title', label: 'Titel', defaultVisible: true },
-  { id: 'company', label: 'Bedrijf', defaultVisible: true },
-  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false },
-  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false },
-  { id: 'email', label: 'E-mail', defaultVisible: false },
-  { id: 'phone', label: 'Telefoon', defaultVisible: false },
-  { id: 'location', label: 'Locatie', defaultVisible: false },
-  { id: 'source', label: 'Bron', defaultVisible: false },
-  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center' },
-  { id: 'score', label: 'Score', defaultVisible: true, align: 'center' },
-  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center' },
-  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center' },
-  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center' },
-  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center' },
-  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center' },
-  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right' },
-  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right' },
-  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center' },
+  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', defaultWidth: 50 },
+  { id: 'name', label: 'Naam', defaultVisible: true, defaultWidth: 180 },
+  { id: 'title', label: 'Titel', defaultVisible: true, defaultWidth: 200 },
+  { id: 'company', label: 'Bedrijf', defaultVisible: true, defaultWidth: 150 },
+  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false, defaultWidth: 180 },
+  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false, defaultWidth: 180 },
+  { id: 'email', label: 'E-mail', defaultVisible: false, defaultWidth: 200 },
+  { id: 'phone', label: 'Telefoon', defaultVisible: false, defaultWidth: 130 },
+  { id: 'location', label: 'Locatie', defaultVisible: false, defaultWidth: 130 },
+  { id: 'source', label: 'Bron', defaultVisible: false, defaultWidth: 80 },
+  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center', defaultWidth: 80 },
+  { id: 'score', label: 'Score', defaultVisible: true, align: 'center', defaultWidth: 70 },
+  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center', defaultWidth: 100 },
+  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right', defaultWidth: 130 },
+  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right', defaultWidth: 130 },
+  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center', defaultWidth: 80 },
 ];
+
+const DEFAULT_WIDTHS: Record<string, number> = Object.fromEntries(
+  ALL_COLUMNS.map(c => [c.id, c.defaultWidth ?? 120])
+);
 
 const STORAGE_KEY = 'contacts-columns-config';
 
-function loadColumnConfig(): { order: string[]; visible: Set<string> } {
+interface ColumnConfig {
+  order: string[];
+  visible: Set<string>;
+  widths: Record<string, number>;
+}
+
+function loadColumnConfig(): ColumnConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { order: parsed.order, visible: new Set(parsed.visible) };
+      return {
+        order: parsed.order,
+        visible: new Set(parsed.visible),
+        widths: { ...DEFAULT_WIDTHS, ...(parsed.widths ?? {}) },
+      };
     }
   } catch {}
   return {
     order: ALL_COLUMNS.map(c => c.id),
     visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+    widths: { ...DEFAULT_WIDTHS },
   };
 }
 
-function saveColumnConfig(order: string[], visible: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ order, visible: Array.from(visible) }));
+function saveColumnConfig(config: ColumnConfig) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    order: config.order,
+    visible: Array.from(config.visible),
+    widths: config.widths,
+  }));
 }
 const sourceLabels: Record<string, string> = { auto: 'Auto', manual: 'Manueel', import: 'Import' };
 
@@ -247,34 +269,75 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
   );
 }
 
+/* ───── Resize handle component ───── */
+function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) => void }) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const onDrag = onResizeStart();
+    const handleMouseMove = (me: MouseEvent) => {
+      onDrag(me.clientX - startX);
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors z-10"
+      onMouseDown={handleMouseDown}
+    />
+  );
+}
+
 /* ───── Column settings popover ───── */
 function ColumnSettingsPopover({
   columnOrder,
   visibleColumns,
+  columnWidths,
+  hasUnsavedChanges,
   onToggle,
   onMoveUp,
   onMoveDown,
   onReset,
+  onSave,
+  onAutoFit,
+  onWidthChange,
 }: {
   columnOrder: string[];
   visibleColumns: Set<string>;
+  columnWidths: Record<string, number>;
+  hasUnsavedChanges: boolean;
   onToggle: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
   onReset: () => void;
+  onSave: () => void;
+  onAutoFit: () => void;
+  onWidthChange: (id: string, width: number) => void;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
+        <Button size="sm" variant="outline" className={`gap-1 text-xs h-8 ${hasUnsavedChanges ? 'border-primary text-primary' : ''}`}>
           <Settings2 className="h-3.5 w-3.5" />
           Kolommen
+          {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="end">
+      <PopoverContent className="w-72 p-0" align="end">
         <div className="p-3 border-b border-border">
           <p className="text-xs font-semibold text-foreground">Kolommen beheren</p>
-          <p className="text-[10px] text-muted-foreground">Toon/verberg en herorden kolommen</p>
+          <p className="text-[10px] text-muted-foreground">Toon/verberg, herorden en breedte aanpassen</p>
         </div>
         <div className="max-h-80 overflow-y-auto p-1">
           {columnOrder.map((colId, idx) => {
@@ -299,6 +362,16 @@ function ColumnSettingsPopover({
                 <span className={`text-xs flex-1 ${isVisible ? 'text-foreground' : 'text-muted-foreground/50'}`}>
                   {def.label}
                 </span>
+                {isVisible && (
+                  <Input
+                    type="number"
+                    value={columnWidths[colId] ?? def.defaultWidth ?? 120}
+                    onChange={(e) => onWidthChange(colId, parseInt(e.target.value) || 80)}
+                    className="w-14 h-5 text-[10px] px-1 text-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    min={40}
+                    max={600}
+                  />
+                )}
                 <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => onMoveUp(colId)}
@@ -319,8 +392,19 @@ function ColumnSettingsPopover({
             );
           })}
         </div>
-        <div className="p-2 border-t border-border">
-          <Button size="sm" variant="ghost" className="w-full text-xs h-7" onClick={onReset}>
+        <div className="p-2 border-t border-border space-y-1">
+          <div className="flex gap-1">
+            <Button size="sm" className="flex-1 text-xs h-7 gap-1" onClick={onSave} disabled={!hasUnsavedChanges}>
+              <Save className="h-3 w-3" />
+              Opslaan
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={onAutoFit}>
+              <Maximize2 className="h-3 w-3" />
+              Auto-fit
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" className="w-full text-xs h-7 gap-1" onClick={onReset}>
+            <RotateCcw className="h-3 w-3" />
             Reset naar standaard
           </Button>
         </div>
@@ -344,38 +428,68 @@ export default function ContactsPage() {
 
   // Column config state
   const [colConfig, setColConfig] = useState(loadColumnConfig);
-  const { order: columnOrder, visible: visibleColumns } = colConfig;
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { order: columnOrder, visible: visibleColumns, widths: columnWidths } = colConfig;
 
-  const toggleColumn = useCallback((id: string) => {
+  const updateConfig = useCallback((updater: (prev: ColumnConfig) => ColumnConfig) => {
     setColConfig(prev => {
-      const next = new Set(prev.visible);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      saveColumnConfig(prev.order, next);
-      return { order: prev.order, visible: next };
+      const next = updater(prev);
+      setHasUnsavedChanges(true);
+      return next;
     });
   }, []);
 
+  const toggleColumn = useCallback((id: string) => {
+    updateConfig(prev => {
+      const next = new Set(prev.visible);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return { ...prev, visible: next };
+    });
+  }, [updateConfig]);
+
   const moveColumn = useCallback((id: string, dir: -1 | 1) => {
-    setColConfig(prev => {
+    updateConfig(prev => {
       const arr = [...prev.order];
       const idx = arr.indexOf(id);
       if (idx < 0) return prev;
       const newIdx = idx + dir;
       if (newIdx < 0 || newIdx >= arr.length) return prev;
       [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
-      saveColumnConfig(arr, prev.visible);
-      return { order: arr, visible: prev.visible };
+      return { ...prev, order: arr };
     });
-  }, []);
+  }, [updateConfig]);
+
+  const setColumnWidth = useCallback((id: string, width: number) => {
+    updateConfig(prev => ({
+      ...prev,
+      widths: { ...prev.widths, [id]: Math.max(40, width) },
+    }));
+  }, [updateConfig]);
 
   const resetColumns = useCallback(() => {
-    const def = {
+    const def: ColumnConfig = {
       order: ALL_COLUMNS.map(c => c.id),
       visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+      widths: { ...DEFAULT_WIDTHS },
     };
-    saveColumnConfig(def.order, def.visible);
+    saveColumnConfig(def);
     setColConfig(def);
+    setHasUnsavedChanges(false);
+    toast.success('Kolominstellingen gereset');
   }, []);
+
+  const saveColumns = useCallback(() => {
+    saveColumnConfig(colConfig);
+    setHasUnsavedChanges(false);
+    toast.success('Kolominstellingen opgeslagen');
+  }, [colConfig]);
+
+  const autoFitColumns = useCallback(() => {
+    updateConfig(prev => ({
+      ...prev,
+      widths: { ...DEFAULT_WIDTHS },
+    }));
+  }, [updateConfig]);
 
   const activeColumns = useMemo(() =>
     columnOrder
@@ -523,26 +637,43 @@ export default function ContactsPage() {
             <ColumnSettingsPopover
               columnOrder={columnOrder}
               visibleColumns={visibleColumns}
+              columnWidths={columnWidths}
+              hasUnsavedChanges={hasUnsavedChanges}
               onToggle={toggleColumn}
               onMoveUp={(id) => moveColumn(id, -1)}
               onMoveDown={(id) => moveColumn(id, 1)}
               onReset={resetColumns}
+              onSave={saveColumns}
+              onAutoFit={autoFitColumns}
+              onWidthChange={setColumnWidth}
             />
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+                  <colgroup>
+                    {selectMode && <col style={{ width: 40 }} />}
+                    {activeColumns.map((col) => (
+                      <col key={col.id} style={{ width: columnWidths[col.id] ?? col.defaultWidth ?? 120 }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr className="border-b border-border text-muted-foreground">
                       {selectMode && <th className="p-3 w-8"></th>}
                       {activeColumns.map((col) => (
                         <th
                           key={col.id}
-                          className={`p-3 font-medium text-${col.align ?? 'left'} ${col.minWidth ?? ''}`}
+                          className={`p-3 font-medium text-${col.align ?? 'left'} relative select-none`}
                         >
-                          {col.label}
+                          <span className="truncate block">{col.label}</span>
+                          <ResizeHandle
+                            onResizeStart={() => {
+                              const baseWidth = columnWidths[col.id] ?? col.defaultWidth ?? 120;
+                              return (delta: number) => setColumnWidth(col.id, baseWidth + delta);
+                            }}
+                          />
                         </th>
                       ))}
                     </tr>
@@ -560,8 +691,10 @@ export default function ContactsPage() {
                           </td>
                         )}
                         {activeColumns.map((col) => (
-                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'}`}>
-                            {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                          <td key={col.id} className={`p-3 text-${col.align ?? 'left'} overflow-hidden`}>
+                            <div className="truncate">
+                              {renderCell(c, col.id, domainDefs, domainIds, (id) => setSelectedId(id))}
+                            </div>
                           </td>
                         ))}
                       </tr>
