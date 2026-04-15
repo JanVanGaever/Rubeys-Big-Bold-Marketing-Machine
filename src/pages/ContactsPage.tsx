@@ -680,6 +680,12 @@ export default function ContactsPage() {
               onAutoFit={autoFitColumns}
               onWidthChange={setColumnWidth}
             />
+            {hasUnsavedChanges && (
+              <Button size="sm" className="text-xs h-8 gap-1" onClick={saveColumns}>
+                <Save className="h-3.5 w-3.5" />
+                Opslaan
+              </Button>
+            )}
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
