@@ -432,6 +432,8 @@ export default function ContactsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dragColId, setDragColId] = useState<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<string | null>(null);
 
   // Column config state
   const [colConfig, setColConfig] = useState(loadColumnConfig);
