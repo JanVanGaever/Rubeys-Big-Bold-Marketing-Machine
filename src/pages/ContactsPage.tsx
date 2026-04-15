@@ -636,10 +636,15 @@ export default function ContactsPage() {
             <ColumnSettingsPopover
               columnOrder={columnOrder}
               visibleColumns={visibleColumns}
+              columnWidths={columnWidths}
+              hasUnsavedChanges={hasUnsavedChanges}
               onToggle={toggleColumn}
               onMoveUp={(id) => moveColumn(id, -1)}
               onMoveDown={(id) => moveColumn(id, 1)}
               onReset={resetColumns}
+              onSave={saveColumns}
+              onAutoFit={autoFitColumns}
+              onWidthChange={setColumnWidth}
             />
           </div>
 
