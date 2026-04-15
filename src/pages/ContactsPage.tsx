@@ -270,7 +270,7 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 }
 
 /* ───── Resize handle component ───── */
-function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) => void }) {
+function ResizeHandle({ onResizeStart, onAutoFit }: { onResizeStart: () => (delta: number) => void; onAutoFit?: () => void }) {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -291,10 +291,17 @@ function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) 
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onAutoFit?.();
+  };
+
   return (
     <div
       className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors z-10"
       onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
     />
   );
 }
