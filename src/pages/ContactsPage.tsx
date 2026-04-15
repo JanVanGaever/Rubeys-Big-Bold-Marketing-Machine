@@ -500,6 +500,14 @@ export default function ContactsPage() {
 
   const tableRef = useRef<HTMLTableElement>(null);
 
+  const activeColumns = useMemo(() =>
+    columnOrder
+      .filter(id => visibleColumns.has(id))
+      .map(id => ALL_COLUMNS.find(c => c.id === id)!)
+      .filter(Boolean),
+    [columnOrder, visibleColumns]
+  );
+
   const autoFitColumn = useCallback((colId: string) => {
     const table = tableRef.current;
     if (!table) return;
@@ -523,14 +531,6 @@ export default function ContactsPage() {
     });
     setColumnWidth(colId, Math.min(maxWidth, 600));
   }, [activeColumns, selectMode, setColumnWidth]);
-
-  const activeColumns = useMemo(() =>
-    columnOrder
-      .filter(id => visibleColumns.has(id))
-      .map(id => ALL_COLUMNS.find(c => c.id === id)!)
-      .filter(Boolean),
-    [columnOrder, visibleColumns]
-  );
 
   const filtered = useMemo(() => {
     let list = contacts;
