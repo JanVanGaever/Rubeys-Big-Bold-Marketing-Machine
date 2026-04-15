@@ -270,7 +270,7 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
 }
 
 /* ───── Resize handle component ───── */
-function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) => void }) {
+function ResizeHandle({ onResizeStart, onAutoFit }: { onResizeStart: () => (delta: number) => void; onAutoFit?: () => void }) {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -291,10 +291,17 @@ function ResizeHandle({ onResizeStart }: { onResizeStart: () => (delta: number) 
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onAutoFit?.();
+  };
+
   return (
     <div
       className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors z-10"
       onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
     />
   );
 }
@@ -491,6 +498,8 @@ export default function ContactsPage() {
     }));
   }, [updateConfig]);
 
+  const tableRef = useRef<HTMLTableElement>(null);
+
   const activeColumns = useMemo(() =>
     columnOrder
       .filter(id => visibleColumns.has(id))
@@ -498,6 +507,30 @@ export default function ContactsPage() {
       .filter(Boolean),
     [columnOrder, visibleColumns]
   );
+
+  const autoFitColumn = useCallback((colId: string) => {
+    const table = tableRef.current;
+    if (!table) return;
+    const colIndex = activeColumns.findIndex(c => c.id === colId);
+    if (colIndex < 0) return;
+    const cellIndex = selectMode ? colIndex + 1 : colIndex;
+    let maxWidth = 40;
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+      const cell = row.children[cellIndex] as HTMLElement | undefined;
+      if (!cell) return;
+      const clone = cell.cloneNode(true) as HTMLElement;
+      clone.style.width = 'auto';
+      clone.style.whiteSpace = 'nowrap';
+      clone.style.position = 'absolute';
+      clone.style.visibility = 'hidden';
+      document.body.appendChild(clone);
+      const w = clone.scrollWidth + 2;
+      document.body.removeChild(clone);
+      if (w > maxWidth) maxWidth = w;
+    });
+    setColumnWidth(colId, Math.min(maxWidth, 600));
+  }, [activeColumns, selectMode, setColumnWidth]);
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -647,12 +680,18 @@ export default function ContactsPage() {
               onAutoFit={autoFitColumns}
               onWidthChange={setColumnWidth}
             />
+            {hasUnsavedChanges && (
+              <Button size="sm" className="text-xs h-8 gap-1" onClick={saveColumns}>
+                <Save className="h-3.5 w-3.5" />
+                Opslaan
+              </Button>
+            )}
           </div>
 
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+                <table ref={tableRef} className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
                   <colgroup>
                     {selectMode && <col style={{ width: 40 }} />}
                     {activeColumns.map((col) => (
@@ -673,6 +712,7 @@ export default function ContactsPage() {
                               const baseWidth = columnWidths[col.id] ?? col.defaultWidth ?? 120;
                               return (delta: number) => setColumnWidth(col.id, baseWidth + delta);
                             }}
+                            onAutoFit={() => autoFitColumn(col.id)}
                           />
                         </th>
                       ))}
