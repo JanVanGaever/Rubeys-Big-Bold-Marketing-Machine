@@ -691,7 +691,7 @@ export default function ContactsPage() {
           <Card className="bg-card border-border overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+                <table ref={tableRef} className="text-xs" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
                   <colgroup>
                     {selectMode && <col style={{ width: 40 }} />}
                     {activeColumns.map((col) => (
@@ -712,6 +712,7 @@ export default function ContactsPage() {
                               const baseWidth = columnWidths[col.id] ?? col.defaultWidth ?? 120;
                               return (delta: number) => setColumnWidth(col.id, baseWidth + delta);
                             }}
+                            onAutoFit={() => autoFitColumn(col.id)}
                           />
                         </th>
                       ))}
