@@ -168,7 +168,7 @@ export default function ImportPage() {
           engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
           previousScore: null, scoreChangedAt: null,
           isCustomer: false, customerSince: null,
-          enrichmentSource: 'none', emailVerifiedByDropcontact: false, dropcontactEnrichedAt: null,
+          enrichmentSource: 'none', emailVerifiedByDropcontact: false, dropcontactEnrichedAt: null, companyLinkedinUrl: null,
         });
         existingUrls.add(url);
         imported++;
@@ -258,7 +258,7 @@ export default function ImportPage() {
           engagementScore: 0, keywordScore: 0, crossSignalScore: 0, enrichmentScore: 0, diversityScore: 0,
           previousScore: null, scoreChangedAt: null,
           isCustomer: false, customerSince: null,
-          enrichmentSource: 'none', emailVerifiedByDropcontact: false, dropcontactEnrichedAt: null,
+          enrichmentSource: 'none', emailVerifiedByDropcontact: false, dropcontactEnrichedAt: null, companyLinkedinUrl: null,
         });
         existingUrls.add(profileUrl);
         newContacts++;

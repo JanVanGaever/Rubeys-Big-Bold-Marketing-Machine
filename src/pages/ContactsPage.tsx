@@ -57,6 +57,8 @@ const ALL_COLUMNS: ColumnDef[] = [
   { id: 'name', label: 'Naam', defaultVisible: true },
   { id: 'title', label: 'Titel', defaultVisible: true },
   { id: 'company', label: 'Bedrijf', defaultVisible: true },
+  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false },
+  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false },
   { id: 'email', label: 'E-mail', defaultVisible: false },
   { id: 'phone', label: 'Telefoon', defaultVisible: false },
   { id: 'location', label: 'Locatie', defaultVisible: false },
@@ -122,6 +124,14 @@ function renderCell(
       return <span className="text-muted-foreground truncate max-w-[250px] block">{c.title ?? '—'}</span>;
     case 'company':
       return <span className="text-muted-foreground">{c.company ?? '—'}</span>;
+    case 'linkedinUrl':
+      return c.linkedinUrl ? (
+        <a href={c.linkedinUrl.startsWith('http') ? c.linkedinUrl : `https://${c.linkedinUrl}`} target="_blank" rel="noopener noreferrer" className="text-primary truncate max-w-[200px] block hover:underline">{c.linkedinUrl.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//, '').replace(/\/$/, '')}</a>
+      ) : <span className="text-muted-foreground/40">—</span>;
+    case 'companyLinkedinUrl':
+      return c.companyLinkedinUrl ? (
+        <a href={c.companyLinkedinUrl.startsWith('http') ? c.companyLinkedinUrl : `https://${c.companyLinkedinUrl}`} target="_blank" rel="noopener noreferrer" className="text-primary truncate max-w-[200px] block hover:underline">{c.companyLinkedinUrl.replace(/^https?:\/\/(www\.)?linkedin\.com\/company\//, '').replace(/\/.*$/, '')}</a>
+      ) : <span className="text-muted-foreground/40">—</span>;
     case 'email':
       return c.email ? (
         <span className="text-muted-foreground truncate max-w-[180px] block">{c.email}</span>
@@ -885,6 +895,7 @@ function AddContactDialog({ open, onClose }: { open: boolean; onClose: () => voi
       enrichmentSource: 'none',
       emailVerifiedByDropcontact: false,
       dropcontactEnrichedAt: null,
+      companyLinkedinUrl: null,
     };
     addContact(newContact);
     setForm({

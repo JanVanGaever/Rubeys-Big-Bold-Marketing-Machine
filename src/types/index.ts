@@ -97,6 +97,7 @@ export interface Contact {
   enrichmentSource: 'none' | 'apollo' | 'dropcontact' | 'both';
   emailVerifiedByDropcontact: boolean;
   dropcontactEnrichedAt: string | null;
+  companyLinkedinUrl: string | null;
 }
 
 export interface AppSettings {
