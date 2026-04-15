@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -23,6 +23,9 @@ import {
   EyeOff,
   MapPin,
   Globe,
+  Save,
+  RotateCcw,
+  Maximize2,
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { getDomainColor, getDomainName } from "@/types";
@@ -49,50 +52,69 @@ interface ColumnDef {
   label: string;
   defaultVisible: boolean;
   align?: 'left' | 'center' | 'right';
-  minWidth?: string;
+  defaultWidth?: number;
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', minWidth: 'w-10' },
-  { id: 'name', label: 'Naam', defaultVisible: true },
-  { id: 'title', label: 'Titel', defaultVisible: true },
-  { id: 'company', label: 'Bedrijf', defaultVisible: true },
-  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false },
-  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false },
-  { id: 'email', label: 'E-mail', defaultVisible: false },
-  { id: 'phone', label: 'Telefoon', defaultVisible: false },
-  { id: 'location', label: 'Locatie', defaultVisible: false },
-  { id: 'source', label: 'Bron', defaultVisible: false },
-  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center' },
-  { id: 'score', label: 'Score', defaultVisible: true, align: 'center' },
-  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center' },
-  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center' },
-  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center' },
-  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center' },
-  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center' },
-  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right' },
-  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right' },
-  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center' },
+  { id: 'status', label: 'Status', defaultVisible: true, align: 'center', defaultWidth: 50 },
+  { id: 'name', label: 'Naam', defaultVisible: true, defaultWidth: 180 },
+  { id: 'title', label: 'Titel', defaultVisible: true, defaultWidth: 200 },
+  { id: 'company', label: 'Bedrijf', defaultVisible: true, defaultWidth: 150 },
+  { id: 'linkedinUrl', label: 'LinkedIn (persoon)', defaultVisible: false, defaultWidth: 180 },
+  { id: 'companyLinkedinUrl', label: 'LinkedIn (bedrijf)', defaultVisible: false, defaultWidth: 180 },
+  { id: 'email', label: 'E-mail', defaultVisible: false, defaultWidth: 200 },
+  { id: 'phone', label: 'Telefoon', defaultVisible: false, defaultWidth: 130 },
+  { id: 'location', label: 'Locatie', defaultVisible: false, defaultWidth: 130 },
+  { id: 'source', label: 'Bron', defaultVisible: false, defaultWidth: 80 },
+  { id: 'domains', label: 'Domeinen', defaultVisible: true, align: 'center', defaultWidth: 80 },
+  { id: 'score', label: 'Score', defaultVisible: true, align: 'center', defaultWidth: 70 },
+  { id: 'engagement', label: 'Engagement', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'keywords', label: 'Keywords', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'crossSignal', label: 'Cross-signaal', defaultVisible: false, align: 'center', defaultWidth: 100 },
+  { id: 'enrichment', label: 'Enrichment', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'diversity', label: 'Diversiteit', defaultVisible: false, align: 'center', defaultWidth: 90 },
+  { id: 'lastSignal', label: 'Laatste signaal', defaultVisible: true, align: 'right', defaultWidth: 130 },
+  { id: 'addedAt', label: 'Toegevoegd', defaultVisible: false, align: 'right', defaultWidth: 130 },
+  { id: 'icons', label: 'Status iconen', defaultVisible: true, align: 'center', defaultWidth: 80 },
 ];
+
+const DEFAULT_WIDTHS: Record<string, number> = Object.fromEntries(
+  ALL_COLUMNS.map(c => [c.id, c.defaultWidth ?? 120])
+);
 
 const STORAGE_KEY = 'contacts-columns-config';
 
-function loadColumnConfig(): { order: string[]; visible: Set<string> } {
+interface ColumnConfig {
+  order: string[];
+  visible: Set<string>;
+  widths: Record<string, number>;
+}
+
+function loadColumnConfig(): ColumnConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return { order: parsed.order, visible: new Set(parsed.visible) };
+      return {
+        order: parsed.order,
+        visible: new Set(parsed.visible),
+        widths: { ...DEFAULT_WIDTHS, ...(parsed.widths ?? {}) },
+      };
     }
   } catch {}
   return {
     order: ALL_COLUMNS.map(c => c.id),
     visible: new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.id)),
+    widths: { ...DEFAULT_WIDTHS },
   };
 }
 
-function saveColumnConfig(order: string[], visible: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ order, visible: Array.from(visible) }));
+function saveColumnConfig(config: ColumnConfig) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    order: config.order,
+    visible: Array.from(config.visible),
+    widths: config.widths,
+  }));
 }
 const sourceLabels: Record<string, string> = { auto: 'Auto', manual: 'Manueel', import: 'Import' };
 
