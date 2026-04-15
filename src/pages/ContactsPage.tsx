@@ -445,7 +445,7 @@ export default function ContactsPage() {
   const updateConfig = useCallback((updater: (prev: ColumnConfig) => ColumnConfig) => {
     setColConfig(prev => {
       const next = updater(prev);
-      setHasUnsavedChanges(true);
+      saveColumnConfig(next);
       return next;
     });
   }, []);
