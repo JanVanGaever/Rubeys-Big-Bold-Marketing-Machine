@@ -734,7 +734,14 @@ export default function ContactsPage() {
                       {activeColumns.map((col) => (
                         <th
                           key={col.id}
-                          className={`p-3 font-medium text-${col.align ?? 'left'} relative select-none`}
+                          draggable
+                          onDragStart={() => handleColumnDragStart(col.id)}
+                          onDragOver={(e) => handleColumnDragOver(e, col.id)}
+                          onDrop={() => handleColumnDrop(col.id)}
+                          onDragEnd={() => { setDragColId(null); setDragOverColId(null); }}
+                          className={`p-3 font-medium text-${col.align ?? 'left'} relative select-none cursor-grab active:cursor-grabbing transition-colors ${
+                            dragOverColId === col.id && dragColId !== col.id ? 'bg-primary/10' : ''
+                          } ${dragColId === col.id ? 'opacity-50' : ''}`}
                         >
                           <span className="truncate block">{col.label}</span>
                           <ResizeHandle
