@@ -498,6 +498,32 @@ export default function ContactsPage() {
     }));
   }, [updateConfig]);
 
+  const tableRef = useRef<HTMLTableElement>(null);
+
+  const autoFitColumn = useCallback((colId: string) => {
+    const table = tableRef.current;
+    if (!table) return;
+    const colIndex = activeColumns.findIndex(c => c.id === colId);
+    if (colIndex < 0) return;
+    const cellIndex = selectMode ? colIndex + 1 : colIndex;
+    let maxWidth = 40;
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+      const cell = row.children[cellIndex] as HTMLElement | undefined;
+      if (!cell) return;
+      const clone = cell.cloneNode(true) as HTMLElement;
+      clone.style.width = 'auto';
+      clone.style.whiteSpace = 'nowrap';
+      clone.style.position = 'absolute';
+      clone.style.visibility = 'hidden';
+      document.body.appendChild(clone);
+      const w = clone.scrollWidth + 2;
+      document.body.removeChild(clone);
+      if (w > maxWidth) maxWidth = w;
+    });
+    setColumnWidth(colId, Math.min(maxWidth, 600));
+  }, [activeColumns, selectMode, setColumnWidth]);
+
   const activeColumns = useMemo(() =>
     columnOrder
       .filter(id => visibleColumns.has(id))
