@@ -269,34 +269,74 @@ function ScoreBar({ label, score, weight }: { label: string; score: number; weig
   );
 }
 
+/* ───── Resize handle component ───── */
+function ResizeHandle({ onResize }: { onResize: (delta: number) => void }) {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const handleMouseMove = (me: MouseEvent) => {
+      onResize(me.clientX - startX);
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  return (
+    <div
+      className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/40 transition-colors z-10"
+      onMouseDown={handleMouseDown}
+    />
+  );
+}
+
 /* ───── Column settings popover ───── */
 function ColumnSettingsPopover({
   columnOrder,
   visibleColumns,
+  columnWidths,
+  hasUnsavedChanges,
   onToggle,
   onMoveUp,
   onMoveDown,
   onReset,
+  onSave,
+  onAutoFit,
+  onWidthChange,
 }: {
   columnOrder: string[];
   visibleColumns: Set<string>;
+  columnWidths: Record<string, number>;
+  hasUnsavedChanges: boolean;
   onToggle: (id: string) => void;
   onMoveUp: (id: string) => void;
   onMoveDown: (id: string) => void;
   onReset: () => void;
+  onSave: () => void;
+  onAutoFit: () => void;
+  onWidthChange: (id: string, width: number) => void;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="gap-1 text-xs h-8">
+        <Button size="sm" variant="outline" className={`gap-1 text-xs h-8 ${hasUnsavedChanges ? 'border-primary text-primary' : ''}`}>
           <Settings2 className="h-3.5 w-3.5" />
           Kolommen
+          {hasUnsavedChanges && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="end">
+      <PopoverContent className="w-72 p-0" align="end">
         <div className="p-3 border-b border-border">
           <p className="text-xs font-semibold text-foreground">Kolommen beheren</p>
-          <p className="text-[10px] text-muted-foreground">Toon/verberg en herorden kolommen</p>
+          <p className="text-[10px] text-muted-foreground">Toon/verberg, herorden en breedte aanpassen</p>
         </div>
         <div className="max-h-80 overflow-y-auto p-1">
           {columnOrder.map((colId, idx) => {
@@ -321,6 +361,16 @@ function ColumnSettingsPopover({
                 <span className={`text-xs flex-1 ${isVisible ? 'text-foreground' : 'text-muted-foreground/50'}`}>
                   {def.label}
                 </span>
+                {isVisible && (
+                  <Input
+                    type="number"
+                    value={columnWidths[colId] ?? def.defaultWidth ?? 120}
+                    onChange={(e) => onWidthChange(colId, parseInt(e.target.value) || 80)}
+                    className="w-14 h-5 text-[10px] px-1 text-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    min={40}
+                    max={600}
+                  />
+                )}
                 <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => onMoveUp(colId)}
@@ -341,8 +391,19 @@ function ColumnSettingsPopover({
             );
           })}
         </div>
-        <div className="p-2 border-t border-border">
-          <Button size="sm" variant="ghost" className="w-full text-xs h-7" onClick={onReset}>
+        <div className="p-2 border-t border-border space-y-1">
+          <div className="flex gap-1">
+            <Button size="sm" className="flex-1 text-xs h-7 gap-1" onClick={onSave} disabled={!hasUnsavedChanges}>
+              <Save className="h-3 w-3" />
+              Opslaan
+            </Button>
+            <Button size="sm" variant="outline" className="text-xs h-7 gap-1" onClick={onAutoFit}>
+              <Maximize2 className="h-3 w-3" />
+              Auto-fit
+            </Button>
+          </div>
+          <Button size="sm" variant="ghost" className="w-full text-xs h-7 gap-1" onClick={onReset}>
+            <RotateCcw className="h-3 w-3" />
             Reset naar standaard
           </Button>
         </div>
