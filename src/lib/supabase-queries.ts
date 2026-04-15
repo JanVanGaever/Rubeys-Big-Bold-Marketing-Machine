@@ -141,6 +141,7 @@ function contactFromRow(r: any): Contact {
     enrichmentSource: r.enrichment_source ?? 'none',
     emailVerifiedByDropcontact: r.email_verified_by_dropcontact ?? false,
     dropcontactEnrichedAt: r.dropcontact_enriched_at,
+    companyLinkedinUrl: r.company_linkedin_url,
   };
 }
 
@@ -179,6 +180,7 @@ function contactToRow(c: Contact) {
     enrichment_source: c.enrichmentSource,
     email_verified_by_dropcontact: c.emailVerifiedByDropcontact,
     dropcontact_enriched_at: c.dropcontactEnrichedAt,
+    company_linkedin_url: c.companyLinkedinUrl,
   };
 }
 
