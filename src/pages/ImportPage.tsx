@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { normalizeLinkedInUrl } from '@/lib/normalize';
+import { normalizeLinkedInUrl, extractCompanySlug } from '@/lib/normalize';
 import ConnectionAlert from '@/components/ConnectionAlert';
 import { useConnectionStore } from '@/stores/connectionStore';
 
