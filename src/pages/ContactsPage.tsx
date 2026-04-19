@@ -710,6 +710,41 @@ export default function ContactsPage() {
                 </Button>
               ))}
             </div>
+            {domainDefs.length > 0 && (
+              <div className="flex gap-1 flex-wrap items-center">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Domein</span>
+                {domainDefs.map((d) => {
+                  const active = domainFilter.includes(d.id);
+                  return (
+                    <Button
+                      key={d.id}
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      className="text-xs h-8 gap-1.5"
+                      style={active ? { backgroundColor: d.color, borderColor: d.color, color: '#fff' } : { borderColor: d.color + '66', color: d.color }}
+                      onClick={() =>
+                        setDomainFilter((prev) =>
+                          prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                        )
+                      }
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? '#fff' : d.color }} />
+                      {d.name}
+                    </Button>
+                  );
+                })}
+                {domainFilter.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-8 px-2"
+                    onClick={() => setDomainFilter([])}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger className="w-44 h-9 text-xs">
                 <SelectValue />
