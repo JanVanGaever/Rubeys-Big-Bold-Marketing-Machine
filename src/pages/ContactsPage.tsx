@@ -586,7 +586,13 @@ export default function ContactsPage() {
     }
     const sorted = [...list];
     if (sort === "score") sorted.sort((a, b) => b.totalScore - a.totalScore);
-...
+    else if (sort === "recent") {
+      sorted.sort((a, b) => {
+        const ad = Math.max(0, ...Object.values(a.domains ?? {}).map(d => d.lastSignalAt ? new Date(d.lastSignalAt).getTime() : 0));
+        const bd = Math.max(0, ...Object.values(b.domains ?? {}).map(d => d.lastSignalAt ? new Date(d.lastSignalAt).getTime() : 0));
+        return bd - ad;
+      });
+    }
     else sorted.sort((a, b) => a.lastName.localeCompare(b.lastName));
     return sorted;
   }, [contacts, search, statusFilter, domainFilter, sort]);
