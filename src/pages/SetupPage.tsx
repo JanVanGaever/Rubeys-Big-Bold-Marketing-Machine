@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight, Info } from 'lucide-react';
+import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight, Info, Wrench } from 'lucide-react';
 import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { testWebhookConnection, testServiceViaWebhook } from '@/lib/api-service';
 import { getApiLog, clearApiLog, type ApiLogEntry } from '@/lib/api-error-handler';
 import { Badge } from '@/components/ui/badge';
+import { useStore } from '@/store/useStore';
+import { toast } from 'sonner';
 
 /* ─── Helpers ─── */
 function relativeTime(iso: string | null) {
