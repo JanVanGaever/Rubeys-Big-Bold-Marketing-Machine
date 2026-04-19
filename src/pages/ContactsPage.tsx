@@ -427,6 +427,7 @@ export default function ContactsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [domainFilter, setDomainFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<string>("score");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -578,28 +579,26 @@ export default function ContactsPage() {
     
     else if (statusFilter === "klanten") list = list.filter((c) => c.isCustomer);
     else if (statusFilter !== "all") list = list.filter((c) => c.status === statusFilter);
+    if (domainFilter.length > 0) {
+      list = list.filter((c) =>
+        domainFilter.some((d) => (c.domains?.[d]?.signalCount ?? 0) > 0)
+      );
+    }
     const sorted = [...list];
     if (sort === "score") sorted.sort((a, b) => b.totalScore - a.totalScore);
-    else if (sort === "recent")
+    else if (sort === "recent") {
       sorted.sort((a, b) => {
-        const la =
-          domainIds.map((d) => a.domains[d]?.lastSignalAt)
-            .filter(Boolean)
-            .sort()
-            .reverse()[0] ?? "";
-        const lb =
-          domainIds.map((d) => b.domains[d]?.lastSignalAt)
-            .filter(Boolean)
-            .sort()
-            .reverse()[0] ?? "";
-        return lb.localeCompare(la);
+        const ad = Math.max(0, ...Object.values(a.domains ?? {}).map(d => d.lastSignalAt ? new Date(d.lastSignalAt).getTime() : 0));
+        const bd = Math.max(0, ...Object.values(b.domains ?? {}).map(d => d.lastSignalAt ? new Date(d.lastSignalAt).getTime() : 0));
+        return bd - ad;
       });
+    }
     else sorted.sort((a, b) => a.lastName.localeCompare(b.lastName));
     return sorted;
-  }, [contacts, search, statusFilter, sort]);
+  }, [contacts, search, statusFilter, domainFilter, sort]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(0); }, [search, statusFilter, sort]);
+  useEffect(() => { setPage(0); }, [search, statusFilter, domainFilter, sort]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page, PAGE_SIZE]);
@@ -711,6 +710,41 @@ export default function ContactsPage() {
                 </Button>
               ))}
             </div>
+            {domainDefs.length > 0 && (
+              <div className="flex gap-1 flex-wrap items-center">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Domein</span>
+                {domainDefs.map((d) => {
+                  const active = domainFilter.includes(d.id);
+                  return (
+                    <Button
+                      key={d.id}
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      className="text-xs h-8 gap-1.5"
+                      style={active ? { backgroundColor: d.color, borderColor: d.color, color: '#fff' } : { borderColor: d.color + '66', color: d.color }}
+                      onClick={() =>
+                        setDomainFilter((prev) =>
+                          prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id]
+                        )
+                      }
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? '#fff' : d.color }} />
+                      {d.name}
+                    </Button>
+                  );
+                })}
+                {domainFilter.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs h-8 px-2"
+                    onClick={() => setDomainFilter([])}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger className="w-44 h-9 text-xs">
                 <SelectValue />
