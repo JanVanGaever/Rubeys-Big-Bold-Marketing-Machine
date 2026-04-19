@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, FileText, CheckCircle, XCircle, AlertTriangle, Copy, Inbox, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { normalizeLinkedInUrl } from '@/lib/normalize';
+import { normalizeLinkedInUrl, extractCompanySlug } from '@/lib/normalize';
 import ConnectionAlert from '@/components/ConnectionAlert';
 import { useConnectionStore } from '@/stores/connectionStore';
 
@@ -278,12 +278,9 @@ export default function ImportPage() {
         }
       }
 
-      // Create signals using the selected watchlist org
-      const selectedOrg = watchlistOrgs.find(o => o.id === selectedOrgId);
-      if (!selectedOrg) {
-        skippedSignals++;
-        return;
-      }
+      // Determine the org per signal: auto-match the watchlist org via the
+      // company slug in the postUrl, falling back to the user-selected org.
+      const fallbackOrg = watchlistOrgs.find(o => o.id === selectedOrgId) ?? null;
 
       const rawPostUrl = colMap['postUrl'] !== undefined ? row[colMap['postUrl']]?.trim() : null;
       if (rawPostUrl) {
@@ -300,15 +297,27 @@ export default function ImportPage() {
         const timestamp = colMap['timestamp'] !== undefined ? row[colMap['timestamp']] : null;
 
         for (const postUrl of postUrls) {
+          // Try to detect the org from the post URL itself
+          const slug = extractCompanySlug(postUrl);
+          const matchedOrg = slug
+            ? watchlistOrgs.find(o => extractCompanySlug(o.linkedinUrl) === slug)
+            : null;
+          const targetOrg = matchedOrg ?? fallbackOrg;
+
+          if (!targetOrg) {
+            skippedSignals++;
+            continue;
+          }
+
           addSignal({
             id: `phantom-sig-${Date.now()}-${newSignals}`,
             contactLinkedinUrl: profileUrl,
             contactName: `${firstName} ${lastName}`,
             contactTitle: headline,
-            orgId: selectedOrg.id,
-            orgName: selectedOrg.name,
-            domain: selectedOrg.domain,
-            tier: selectedOrg.tier,
+            orgId: targetOrg.id,
+            orgName: targetOrg.name,
+            domain: targetOrg.domain,
+            tier: targetOrg.tier,
             engagementType,
             commentText,
             detectedAt: timestamp || new Date().toISOString(),
