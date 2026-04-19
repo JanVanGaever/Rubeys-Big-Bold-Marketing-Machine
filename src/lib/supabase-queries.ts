@@ -297,6 +297,27 @@ export async function deleteSignalsByDomain(domain: string) {
   if (error) throw error;
 }
 
+export async function deleteSignalsByIds(ids: string[]) {
+  if (ids.length === 0) return;
+  // Chunk to stay under URL/payload limits
+  const CHUNK = 200;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const { error } = await supabase.from('signals').delete().in('id', slice);
+    if (error) throw error;
+  }
+}
+
+export async function upsertSignals(signals: Signal[]) {
+  if (signals.length === 0) return;
+  const CHUNK = 500;
+  for (let i = 0; i < signals.length; i += CHUNK) {
+    const slice = signals.slice(i, i + CHUNK).map(signalToRow);
+    const { error } = await supabase.from('signals').upsert(slice, { onConflict: 'id' });
+    if (error) throw error;
+  }
+}
+
 // ── CAMPAIGNS ──
 
 function campaignFromRow(r: any): LemlistCampaign {

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight, Info } from 'lucide-react';
+import { Check, AlertTriangle, Circle, Loader2, ExternalLink, CheckCircle2, RotateCcw, ArrowRight, Info, Wrench } from 'lucide-react';
 import { useConnectionStore, type ConnectionStatus } from '@/stores/connectionStore';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { testWebhookConnection, testServiceViaWebhook } from '@/lib/api-service';
 import { getApiLog, clearApiLog, type ApiLogEntry } from '@/lib/api-error-handler';
 import { Badge } from '@/components/ui/badge';
+import { useStore } from '@/store/useStore';
+import { toast } from 'sonner';
 
 /* ─── Helpers ─── */
 function relativeTime(iso: string | null) {
@@ -269,7 +271,26 @@ function SetupWizard() {
 /* ─── DASHBOARD MODE ─── */
 function SetupDashboard() {
   const { connections, setConnectionConfig, testConnection, resetSetup, setConnectionStatus } = useConnectionStore();
+  const relinkSignalsByPostUrl = useStore(s => s.relinkSignalsByPostUrl);
   const [searchParams] = useSearchParams();
+  const [isRelinking, setIsRelinking] = useState(false);
+  const [relinkResult, setRelinkResult] = useState<{ relinked: number; duplicatesRemoved: number; skipped: number } | null>(null);
+
+  const handleRelink = async () => {
+    if (!confirm('Alle bestaande signalen worden herkoppeld aan de juiste organisatie op basis van de post-URL, en duplicaten worden verwijderd. Doorgaan?')) return;
+    setIsRelinking(true);
+    setRelinkResult(null);
+    try {
+      const result = await relinkSignalsByPostUrl();
+      setRelinkResult(result);
+      toast.success(`Klaar: ${result.relinked} herkoppeld, ${result.duplicatesRemoved} duplicaten verwijderd`);
+    } catch (err: any) {
+      toast.error(`Opkuis mislukt: ${err.message ?? 'onbekende fout'}`);
+    } finally {
+      setIsRelinking(false);
+    }
+  };
+
   const openId = searchParams.get('open');
   const [testingAll, setTestingAll] = useState(false);
   const [showLog, setShowLog] = useState(false);
@@ -375,7 +396,31 @@ function SetupDashboard() {
         <button onClick={resetSetup} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Setup opnieuw starten</button>
       </div>
 
-      {/* API Log */}
+      {/* Onderhoud */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Onderhoud</h3>
+        </div>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-foreground">Signalen herkoppelen via post-URL</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Loopt alle bestaande signalen door en koppelt ze aan de juiste organisatie op basis van de company-slug in de post-URL. Verwijdert duplicaten met identiek contact + post-URL + engagement-type.
+            </p>
+            {relinkResult && (
+              <p className="text-[11px] text-emerald-500 mt-2">
+                {relinkResult.relinked} herkoppeld • {relinkResult.duplicatesRemoved} duplicaten verwijderd • {relinkResult.skipped} overgeslagen (geen slug-match)
+              </p>
+            )}
+          </div>
+          <button onClick={handleRelink} disabled={isRelinking}
+            className="bg-primary/10 text-primary border border-primary/20 rounded-lg px-3 py-1.5 text-xs hover:bg-primary/20 transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0">
+            {isRelinking ? <><Loader2 className="h-3 w-3 animate-spin" /> Bezig...</> : <><RotateCcw className="h-3 w-3" /> Opkuis starten</>}
+          </button>
+        </div>
+      </div>
+
       {showLog && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">

@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 import { DEFAULT_DOMAINS } from "@/types";
 import { DEFAULT_SETTINGS } from "@/lib/seed-data";
-import { normalizeLinkedInUrl } from "@/lib/normalize";
+import { normalizeLinkedInUrl, extractCompanySlug } from "@/lib/normalize";
 import * as db from "@/lib/supabase-queries";
 
 interface AppState {
@@ -45,6 +45,13 @@ interface AppState {
   addSignal: (signal: Signal) => void;
   addContact: (contact: Contact) => void;
   updateContact: (id: string, updates: Partial<Contact>) => void;
+
+  // Maintenance
+  relinkSignalsByPostUrl: () => Promise<{
+    relinked: number;
+    duplicatesRemoved: number;
+    skipped: number;
+  }>;
 
   // Settings
   updateSettings: (updates: Partial<AppSettings>) => void;
@@ -617,5 +624,90 @@ export const useStore = create<AppState>()(
         });
         return { settings };
       }),
+
+    relinkSignalsByPostUrl: async () => {
+      const state = get();
+      const { signals, watchlistOrgs, contacts, settings } = state;
+
+      // Build slug → org lookup once
+      const slugToOrg = new Map<string, WatchlistOrg>();
+      for (const org of watchlistOrgs) {
+        const slug = extractCompanySlug(org.linkedinUrl);
+        if (slug) slugToOrg.set(slug, org);
+      }
+
+      let relinked = 0;
+      let skipped = 0;
+
+      // Step 1 — re-link each signal to the org matching its postUrl slug
+      const updatedSignals: Signal[] = signals.map(sig => {
+        const slug = extractCompanySlug(sig.postUrl);
+        if (!slug) {
+          skipped++;
+          return sig;
+        }
+        const matchedOrg = slugToOrg.get(slug);
+        if (!matchedOrg) {
+          skipped++;
+          return sig;
+        }
+        if (matchedOrg.id === sig.orgId) return sig;
+        relinked++;
+        return {
+          ...sig,
+          orgId: matchedOrg.id,
+          orgName: matchedOrg.name,
+          domain: matchedOrg.domain,
+          tier: matchedOrg.tier,
+        };
+      });
+
+      // Step 2 — dedupe on (contactLinkedinUrl + postUrl + engagementType)
+      // Keep the oldest (first detected) signal per group.
+      const seen = new Map<string, Signal>();
+      const removedIds: string[] = [];
+      const sortedByDate = [...updatedSignals].sort(
+        (a, b) => new Date(a.detectedAt).getTime() - new Date(b.detectedAt).getTime()
+      );
+      for (const sig of sortedByDate) {
+        const key = `${normalizeLinkedInUrl(sig.contactLinkedinUrl)}|${sig.postUrl ?? ''}|${sig.engagementType}`;
+        if (seen.has(key)) {
+          removedIds.push(sig.id);
+        } else {
+          seen.set(key, sig);
+        }
+      }
+      const dedupedSignals = updatedSignals.filter(s => !removedIds.includes(s.id));
+      const duplicatesRemoved = removedIds.length;
+
+      // Step 3 — figure out which signals actually changed so we only upsert those
+      const changedSignals = dedupedSignals.filter((sig) => {
+        const original = signals.find(s => s.id === sig.id);
+        if (!original) return false;
+        return (
+          original.orgId !== sig.orgId ||
+          original.orgName !== sig.orgName ||
+          original.domain !== sig.domain ||
+          original.tier !== sig.tier
+        );
+      });
+
+      // Step 4 — recompute scores with the new signal set
+      const recomputedContacts = recompute(contacts, dedupedSignals, settings, watchlistOrgs);
+
+      set({ signals: dedupedSignals, contacts: recomputedContacts });
+
+      // Step 5 — persist to DB (await so the caller can show a final toast)
+      try {
+        if (removedIds.length > 0) await db.deleteSignalsByIds(removedIds);
+        if (changedSignals.length > 0) await db.upsertSignals(changedSignals);
+        await db.upsertContacts(recomputedContacts);
+      } catch (err) {
+        console.error('[relinkSignalsByPostUrl] DB sync error', err);
+        throw err;
+      }
+
+      return { relinked, duplicatesRemoved, skipped };
+    },
   }),
 );
