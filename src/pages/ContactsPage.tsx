@@ -427,6 +427,7 @@ export default function ContactsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [domainFilter, setDomainFilter] = useState<string[]>([]);
   const [sort, setSort] = useState<string>("score");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
