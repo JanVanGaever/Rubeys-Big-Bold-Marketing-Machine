@@ -271,7 +271,26 @@ function SetupWizard() {
 /* ─── DASHBOARD MODE ─── */
 function SetupDashboard() {
   const { connections, setConnectionConfig, testConnection, resetSetup, setConnectionStatus } = useConnectionStore();
+  const relinkSignalsByPostUrl = useStore(s => s.relinkSignalsByPostUrl);
   const [searchParams] = useSearchParams();
+  const [isRelinking, setIsRelinking] = useState(false);
+  const [relinkResult, setRelinkResult] = useState<{ relinked: number; duplicatesRemoved: number; skipped: number } | null>(null);
+
+  const handleRelink = async () => {
+    if (!confirm('Alle bestaande signalen worden herkoppeld aan de juiste organisatie op basis van de post-URL, en duplicaten worden verwijderd. Doorgaan?')) return;
+    setIsRelinking(true);
+    setRelinkResult(null);
+    try {
+      const result = await relinkSignalsByPostUrl();
+      setRelinkResult(result);
+      toast.success(`Klaar: ${result.relinked} herkoppeld, ${result.duplicatesRemoved} duplicaten verwijderd`);
+    } catch (err: any) {
+      toast.error(`Opkuis mislukt: ${err.message ?? 'onbekende fout'}`);
+    } finally {
+      setIsRelinking(false);
+    }
+  };
+
   const openId = searchParams.get('open');
   const [testingAll, setTestingAll] = useState(false);
   const [showLog, setShowLog] = useState(false);
