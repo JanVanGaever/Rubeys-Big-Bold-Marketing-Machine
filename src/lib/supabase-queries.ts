@@ -211,14 +211,35 @@ export async function fetchContacts(): Promise<Contact[]> {
 }
 
 export async function upsertContact(c: Contact) {
-  const { error } = await supabase.from('contacts').upsert(contactToRow(c));
+  // Conflict on linkedin_url so re-saving an existing contact (possibly with a
+  // freshly normalised URL) updates the existing row instead of crashing on the
+  // contacts_linkedin_url_key unique constraint.
+  const { error } = await supabase
+    .from('contacts')
+    .upsert(contactToRow(c), { onConflict: 'linkedin_url' });
   if (error) throw error;
 }
 
 export async function upsertContacts(contacts: Contact[]) {
   if (contacts.length === 0) return;
-  const { error } = await supabase.from('contacts').upsert(contacts.map(contactToRow));
-  if (error) throw error;
+  // Deduplicate within the batch on the normalised URL — keep the last
+  // occurrence (same Map semantics as upsert) so a single payload never
+  // contains two rows with the same linkedin_url (which would also crash).
+  const byUrl = new Map<string, Contact>();
+  for (const c of contacts) {
+    byUrl.set(normalizeLinkedInUrl(c.linkedinUrl), c);
+  }
+  const rows = Array.from(byUrl.values()).map(contactToRow);
+
+  // Chunk to keep payloads under PostgREST limits.
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const slice = rows.slice(i, i + CHUNK);
+    const { error } = await supabase
+      .from('contacts')
+      .upsert(slice, { onConflict: 'linkedin_url' });
+    if (error) throw error;
+  }
 }
 
 export async function deleteContact(id: string) {
