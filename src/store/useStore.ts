@@ -256,7 +256,26 @@ export const useStore = create<AppState>()(
         if (data.domains.length > 0) {
           settings.domains = data.domains;
         }
+        // Recompute domains/scores using normalized URLs (from supabase-queries.ts).
+        // This re-links any historical contacts/signals whose URLs were stored
+        // un-normalized (e.g. https://www.linkedin.com/in/... vs linkedin.com/in/...).
         const contacts = recompute(data.contacts, data.signals, settings, data.orgs);
+
+        // Persist the re-linked contacts and any URL normalisations back to the DB
+        // so the cleanup is permanent (fire-and-forget; UI keeps working if it fails).
+        const contactsChanged = contacts.some((c, i) => {
+          const orig = data.contacts[i];
+          return (
+            !orig ||
+            orig.linkedinUrl !== c.linkedinUrl ||
+            orig.activeDomainCount !== c.activeDomainCount ||
+            orig.totalScore !== c.totalScore ||
+            JSON.stringify(orig.domains) !== JSON.stringify(c.domains)
+          );
+        });
+        if (contactsChanged) {
+          syncToDb(() => db.upsertContacts(contacts));
+        }
         set({
           watchlistOrgs: data.orgs,
           signals: data.signals,
