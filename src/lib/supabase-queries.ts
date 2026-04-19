@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeLinkedInUrl } from '@/lib/normalize';
 import type {
   WatchlistOrg, Signal, Contact, AppSettings,
   ImportRecord, EnrichmentRecord, SyncRecord, LemlistCampaign,
@@ -9,6 +10,12 @@ import type {
 
 function toSnake(str: string): string {
   return str.replace(/[A-Z]/g, l => `_${l.toLowerCase()}`);
+}
+
+function normalizeOptionalLinkedInUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const normalized = normalizeLinkedInUrl(url);
+  return normalized || null;
 }
 
 // ── DOMAINS ──
@@ -109,7 +116,7 @@ export async function deleteOrg(id: string) {
 function contactFromRow(r: any): Contact {
   return {
     id: r.id,
-    linkedinUrl: r.linkedin_url,
+    linkedinUrl: normalizeLinkedInUrl(r.linkedin_url ?? ''),
     firstName: r.first_name,
     lastName: r.last_name,
     title: r.title,
@@ -141,14 +148,14 @@ function contactFromRow(r: any): Contact {
     enrichmentSource: r.enrichment_source ?? 'none',
     emailVerifiedByDropcontact: r.email_verified_by_dropcontact ?? false,
     dropcontactEnrichedAt: r.dropcontact_enriched_at,
-    companyLinkedinUrl: r.company_linkedin_url,
+    companyLinkedinUrl: normalizeOptionalLinkedInUrl(r.company_linkedin_url),
   };
 }
 
 function contactToRow(c: Contact) {
   return {
     id: c.id,
-    linkedin_url: c.linkedinUrl,
+    linkedin_url: normalizeLinkedInUrl(c.linkedinUrl),
     first_name: c.firstName,
     last_name: c.lastName,
     title: c.title,
@@ -180,7 +187,7 @@ function contactToRow(c: Contact) {
     enrichment_source: c.enrichmentSource,
     email_verified_by_dropcontact: c.emailVerifiedByDropcontact,
     dropcontact_enriched_at: c.dropcontactEnrichedAt,
-    company_linkedin_url: c.companyLinkedinUrl,
+    company_linkedin_url: normalizeOptionalLinkedInUrl(c.companyLinkedinUrl),
   };
 }
 
@@ -224,7 +231,7 @@ export async function deleteContact(id: string) {
 function signalFromRow(r: any): Signal {
   return {
     id: r.id,
-    contactLinkedinUrl: r.contact_linkedin_url,
+    contactLinkedinUrl: normalizeLinkedInUrl(r.contact_linkedin_url ?? ''),
     contactName: r.contact_name,
     contactTitle: r.contact_title,
     orgId: r.org_id,
@@ -241,7 +248,7 @@ function signalFromRow(r: any): Signal {
 function signalToRow(s: Signal) {
   return {
     id: s.id,
-    contact_linkedin_url: s.contactLinkedinUrl,
+    contact_linkedin_url: normalizeLinkedInUrl(s.contactLinkedinUrl),
     contact_name: s.contactName,
     contact_title: s.contactTitle,
     org_id: s.orgId,
