@@ -579,28 +579,20 @@ export default function ContactsPage() {
     
     else if (statusFilter === "klanten") list = list.filter((c) => c.isCustomer);
     else if (statusFilter !== "all") list = list.filter((c) => c.status === statusFilter);
+    if (domainFilter.length > 0) {
+      list = list.filter((c) =>
+        domainFilter.some((d) => (c.domains?.[d]?.signalCount ?? 0) > 0)
+      );
+    }
     const sorted = [...list];
     if (sort === "score") sorted.sort((a, b) => b.totalScore - a.totalScore);
-    else if (sort === "recent")
-      sorted.sort((a, b) => {
-        const la =
-          domainIds.map((d) => a.domains[d]?.lastSignalAt)
-            .filter(Boolean)
-            .sort()
-            .reverse()[0] ?? "";
-        const lb =
-          domainIds.map((d) => b.domains[d]?.lastSignalAt)
-            .filter(Boolean)
-            .sort()
-            .reverse()[0] ?? "";
-        return lb.localeCompare(la);
-      });
+...
     else sorted.sort((a, b) => a.lastName.localeCompare(b.lastName));
     return sorted;
-  }, [contacts, search, statusFilter, sort]);
+  }, [contacts, search, statusFilter, domainFilter, sort]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(0); }, [search, statusFilter, sort]);
+  useEffect(() => { setPage(0); }, [search, statusFilter, domainFilter, sort]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paged = useMemo(() => filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE), [filtered, page, PAGE_SIZE]);
