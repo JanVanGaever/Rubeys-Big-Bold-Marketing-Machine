@@ -14,7 +14,7 @@ import type {
 } from "@/types";
 import { DEFAULT_DOMAINS } from "@/types";
 import { DEFAULT_SETTINGS } from "@/lib/seed-data";
-import { normalizeLinkedInUrl } from "@/lib/normalize";
+import { normalizeLinkedInUrl, extractCompanySlug } from "@/lib/normalize";
 import * as db from "@/lib/supabase-queries";
 
 interface AppState {
@@ -45,6 +45,13 @@ interface AppState {
   addSignal: (signal: Signal) => void;
   addContact: (contact: Contact) => void;
   updateContact: (id: string, updates: Partial<Contact>) => void;
+
+  // Maintenance
+  relinkSignalsByPostUrl: () => Promise<{
+    relinked: number;
+    duplicatesRemoved: number;
+    skipped: number;
+  }>;
 
   // Settings
   updateSettings: (updates: Partial<AppSettings>) => void;
